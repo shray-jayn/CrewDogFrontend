@@ -141,7 +141,7 @@ export default function Login() {
               </div>
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-wider">TRAVEL</h1>
+              <h1 className="text-3xl font-bold tracking-wider">CREWDOG</h1>
             </div>
           </motion.div>
 
@@ -152,10 +152,10 @@ export default function Login() {
             transition={{ duration: 0.8, delay: 0.4 }}
           >
             <h2 className="text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              EXPLORE
+              DISCOVER
               <br />
               <span className="bg-gradient-to-r from-primary via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                HORIZONS
+                YOUR CAREER
               </span>
             </h2>
           </motion.div>
@@ -167,9 +167,9 @@ export default function Login() {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="text-2xl mb-6 font-light"
           >
-            Where Your Dream Destinations
+            Where Your Dream Job
             <br />
-            Become Reality.
+            Becomes Reality.
           </motion.p>
 
           {/* Description */}
@@ -179,9 +179,9 @@ export default function Login() {
             transition={{ duration: 0.8, delay: 0.8 }}
             className="text-lg text-white/80 leading-relaxed max-w-xl"
           >
-            Embark on a journey where every corner of the world is within your
-            reach. Discover breathtaking destinations and create unforgettable
-            memories.
+            Embark on a journey where every career opportunity is within your
+            reach. Connect with top companies and unlock your professional
+            potential.
           </motion.p>
 
           {/* Decorative Elements */}
