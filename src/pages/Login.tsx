@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Chrome, 
   Plus, 
@@ -10,11 +10,14 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Apple
+  Apple,
+  CheckCircle2,
+  Sparkles
 } from "lucide-react";
 import { useMockAuth } from "@/hooks/useMockAuth";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
+import blueFluidBg from "@/assets/blue-fluid-bg.jpg";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -25,6 +28,9 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -32,21 +38,60 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation with toasts
+    if (!email) {
+      toast.error("Email is required", {
+        description: "Please enter your email address"
+      });
+      return;
+    }
 
-    if (!email || !password) {
-      toast.error("Please fill in all fields");
+    if (!email.includes("@")) {
+      toast.error("Invalid email", {
+        description: "Please enter a valid email address"
+      });
+      return;
+    }
+
+    if (!password) {
+      toast.error("Password is required", {
+        description: "Please enter your password"
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("Password too short", {
+        description: "Password must be at least 6 characters"
+      });
       return;
     }
 
     if (!isLogin && password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error("Passwords don't match", {
+        description: "Please make sure your passwords match"
+      });
       return;
     }
 
+    setIsLoading(true);
+    
+    // Simulate loading
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
     login(email);
-    toast.success(isLogin ? "Welcome back!" : "Account created successfully!");
+    
+    toast.success(isLogin ? "Welcome back!" : "Account created!", {
+      description: isLogin 
+        ? `Logged in as ${email}` 
+        : "Your account has been created successfully",
+      icon: <CheckCircle2 className="w-5 h-5" />
+    });
+    
+    setIsLoading(false);
     navigate("/run");
   };
 
@@ -63,298 +108,391 @@ export default function Login() {
         className="relative w-full h-screen bg-card shadow-[0_20px_80px_rgba(0,0,0,0.15)] overflow-hidden flex"
       >
         {/* Left Side - Form */}
-        <div className="w-full lg:w-1/2 p-16 flex flex-col justify-center bg-card/95 backdrop-blur-sm">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-12 h-12 bg-foreground rounded-xl flex items-center justify-center shadow-md">
-              <Plus className="w-7 h-7 text-background" />
-            </div>
-            <span className="text-2xl font-bold text-foreground tracking-tight">CrewDog</span>
-          </div>
+        <div className="w-full lg:w-1/2 p-6 sm:p-10 md:p-12 lg:p-16 flex flex-col justify-center bg-card/95 backdrop-blur-sm overflow-y-auto">
+          {/* Logo with animation */}
+          <motion.div 
+            className="flex items-center gap-3 mb-8 md:mb-10"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <motion.div 
+              className="w-10 h-10 sm:w-12 sm:h-12 bg-foreground rounded-xl flex items-center justify-center shadow-md"
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Plus className="w-6 h-6 sm:w-7 sm:h-7 text-background" />
+            </motion.div>
+            <span className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">CrewDog</span>
+          </motion.div>
 
-          {/* Welcome Message */}
-          <div className="mb-10">
-            <h1 className="text-4xl font-bold text-foreground mb-3 tracking-tight">
+          {/* Welcome Message with animation */}
+          <motion.div 
+            className="mb-8 md:mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 md:mb-3 tracking-tight">
               Welcome Back Creative!
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm md:text-base text-muted-foreground flex items-center gap-2">
               We Are Happy To See You Again
+              <Sparkles className="w-4 h-4 text-primary" />
             </p>
-          </div>
+          </motion.div>
 
-          {/* Tab Switcher */}
-          <div className="flex gap-3 mb-10">
-            <button
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-3.5 px-8 rounded-full font-medium transition-all duration-300 ${
+          {/* Tab Switcher with animation */}
+          <motion.div 
+            className="flex gap-2 sm:gap-3 mb-8 md:mb-10"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <motion.button
+              onClick={() => {
+                setIsLogin(true);
+                toast.info("Switched to Sign In");
+              }}
+              className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-8 rounded-full text-sm sm:text-base font-medium transition-all duration-300 ${
                 isLogin
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                   : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
               }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               Sign in
-            </button>
-            <button
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-3.5 px-8 rounded-full font-medium transition-all duration-300 ${
+            </motion.button>
+            <motion.button
+              onClick={() => {
+                setIsLogin(false);
+                toast.info("Switched to Sign Up");
+              }}
+              className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-8 rounded-full text-sm sm:text-base font-medium transition-all duration-300 ${
                 !isLogin
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                   : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
               }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               Sign Up
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Input */}
-            <div className="relative">
+          <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
+            {/* Email Input with animation */}
+            <motion.div 
+              className="relative"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
               <Input
                 type="email"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-5 pr-12 h-14 rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-colors"
+                onFocus={() => setEmailFocused(true)}
+                onBlur={() => setEmailFocused(false)}
+                className="pl-5 pr-12 h-12 sm:h-14 rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-all duration-300 text-sm sm:text-base"
+                disabled={isLoading}
               />
-              <Mail className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            </div>
+              <motion.div
+                animate={{ 
+                  scale: emailFocused ? 1.1 : 1,
+                  color: emailFocused ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"
+                }}
+                transition={{ duration: 0.2 }}
+              >
+                <Mail className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5" />
+              </motion.div>
+            </motion.div>
 
-            {/* Password Input */}
-            <div className="relative">
+            {/* Password Input with animation */}
+            <motion.div 
+              className="relative"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
               <Input
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-5 pr-12 h-14 rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-colors"
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+                className="pl-5 pr-12 h-12 sm:h-14 rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-all duration-300 text-sm sm:text-base"
+                disabled={isLoading}
               />
-              <button
+              <motion.button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() => {
+                  setShowPassword(!showPassword);
+                  toast.info(showPassword ? "Password hidden" : "Password visible");
+                }}
                 className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                animate={{ 
+                  color: passwordFocused ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"
+                }}
               >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-
-            {/* Confirm Password (Sign Up only) */}
-            {!isLogin && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="relative"
-              >
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-5 pr-12 h-14 rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-colors"
-                />
-                <Lock className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              </motion.div>
-            )}
-
-            {/* Remember Me & Forgot Password */}
-            {isLogin && (
-              <div className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-2.5">
-                  <Checkbox
-                    id="remember"
-                    checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                    className="rounded-md"
-                  />
-                  <label
-                    htmlFor="remember"
-                    className="text-sm text-muted-foreground cursor-pointer select-none"
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={showPassword ? "hide" : "show"}
+                    initial={{ opacity: 0, rotate: -180 }}
+                    animate={{ opacity: 1, rotate: 0 }}
+                    exit={{ opacity: 0, rotate: 180 }}
+                    transition={{ duration: 0.3 }}
                   >
-                    Remember me
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  className="text-sm text-primary hover:underline font-medium"
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </motion.button>
+            </motion.div>
+
+            {/* Confirm Password (Sign Up only) with animation */}
+            <AnimatePresence mode="wait">
+              {!isLogin && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="relative overflow-hidden"
                 >
-                  Forgot Password?
-                </button>
-              </div>
-            )}
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-5 pr-12 h-12 sm:h-14 rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-all duration-300 text-sm sm:text-base"
+                    disabled={isLoading}
+                  />
+                  <Lock className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full h-14 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-base font-semibold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30"
-            >
-              {isLogin ? "Login" : "Create Account"}
-            </Button>
+            {/* Remember Me & Forgot Password with animation */}
+            <AnimatePresence mode="wait">
+              {isLogin && (
+                <motion.div 
+                  className="flex items-center justify-between py-1"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <motion.div 
+                    className="flex items-center gap-2.5"
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <Checkbox
+                      id="remember"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => {
+                        setRememberMe(checked as boolean);
+                        toast.success(checked ? "Remember me enabled" : "Remember me disabled");
+                      }}
+                      className="rounded-md"
+                      disabled={isLoading}
+                    />
+                    <label
+                      htmlFor="remember"
+                      className="text-xs sm:text-sm text-muted-foreground cursor-pointer select-none"
+                    >
+                      Remember me
+                    </label>
+                  </motion.div>
+                  <motion.button
+                    type="button"
+                    onClick={() => toast.info("Password reset link sent!", {
+                      description: "Check your email for the reset link"
+                    })}
+                    className="text-xs sm:text-sm text-primary hover:underline font-medium"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Forgot Password?
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-muted/50" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-card px-5 text-muted-foreground font-medium">OR</span>
-              </div>
-            </div>
-
-            {/* Social Login Buttons */}
-            <div className="space-y-3.5">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full h-14 rounded-full bg-foreground text-background hover:bg-foreground/90 border-0 font-medium shadow-sm hover:shadow-md transition-all"
-              >
-                <Apple className="w-5 h-5 mr-3" />
-                Log in with Apple
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full h-14 rounded-full border-2 font-medium hover:bg-muted/30 transition-all"
-              >
-                <Chrome className="w-5 h-5 mr-3" />
-                Log in with Google
-              </Button>
-            </div>
-          </form>
-        </div>
-
-        {/* Right Side - Blue Fluid Design */}
-        <div className="hidden lg:block lg:w-1/2 relative bg-gradient-to-br from-[#1e3a8a] via-[#1e40af] to-[#172554] overflow-hidden">
-          {/* Animated Fluid Shapes - More dramatic and flowing */}
-          <motion.div
-            className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1 }}
-          >
-            {/* Primary Large Fluid Wave */}
-            <motion.div
-              className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px]"
-              style={{
-                background: "radial-gradient(ellipse at center, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.5), transparent)",
-                filter: "blur(80px)",
-                borderRadius: "40% 60% 70% 30% / 40% 50% 60% 50%",
-              }}
-              animate={{
-                x: [0, 60, 0],
-                y: [0, 40, 0],
-                scale: [1, 1.15, 1],
-                rotate: [0, 15, 0],
-              }}
-              transition={{
-                duration: 12,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-
-            {/* Secondary Flowing Shape */}
-            <motion.div
-              className="absolute top-[30%] right-[5%] w-[500px] h-[500px]"
-              style={{
-                background: "radial-gradient(ellipse at center, rgba(96, 165, 250, 0.7), rgba(59, 130, 246, 0.4), transparent)",
-                filter: "blur(70px)",
-                borderRadius: "60% 40% 30% 70% / 60% 30% 70% 40%",
-              }}
-              animate={{
-                x: [0, -50, 0],
-                y: [0, 50, 0],
-                scale: [1, 1.2, 1],
-                rotate: [0, -20, 0],
-              }}
-              transition={{
-                duration: 14,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-
-            {/* Tertiary Accent Wave */}
-            <motion.div
-              className="absolute bottom-[10%] right-[15%] w-[450px] h-[450px]"
-              style={{
-                background: "radial-gradient(ellipse at center, rgba(147, 197, 253, 0.6), rgba(96, 165, 250, 0.3), transparent)",
-                filter: "blur(60px)",
-                borderRadius: "50% 50% 30% 70% / 30% 70% 70% 30%",
-              }}
-              animate={{
-                x: [0, 40, 0],
-                y: [0, -40, 0],
-                scale: [1, 1.18, 1],
-                rotate: [0, 25, 0],
-              }}
-              transition={{
-                duration: 10,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-
-            {/* Additional Flowing Accent 1 */}
-            <motion.div
-              className="absolute top-[20%] left-[10%] w-[350px] h-[350px]"
-              style={{
-                background: "radial-gradient(circle, rgba(191, 219, 254, 0.5), rgba(147, 197, 253, 0.3), transparent)",
-                filter: "blur(50px)",
-                borderRadius: "40% 60% 50% 50% / 60% 40% 60% 40%",
-              }}
-              animate={{
-                x: [0, -30, 0],
-                y: [0, 35, 0],
-                scale: [1, 1.12, 1],
-                rotate: [0, -15, 0],
-              }}
-              transition={{
-                duration: 11,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-
-            {/* Additional Flowing Accent 2 */}
-            <motion.div
-              className="absolute bottom-[25%] left-[5%] w-[400px] h-[400px]"
-              style={{
-                background: "radial-gradient(circle, rgba(59, 130, 246, 0.4), rgba(37, 99, 235, 0.2), transparent)",
-                filter: "blur(65px)",
-                borderRadius: "70% 30% 40% 60% / 30% 60% 40% 70%",
-              }}
-              animate={{
-                x: [0, 45, 0],
-                y: [0, -35, 0],
-                scale: [1, 1.14, 1],
-                rotate: [0, 18, 0],
-              }}
-              transition={{
-                duration: 13,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-          </motion.div>
-
-          {/* Glass Footer Text Box */}
-          <div className="absolute bottom-10 left-10 right-10">
+            {/* Submit Button with loading state */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-              className="backdrop-blur-xl bg-white/5 rounded-[1.75rem] p-6 border border-white/10 shadow-2xl"
+              transition={{ duration: 0.5, delay: 0.5 }}
             >
-              <p className="text-white/70 text-xs leading-relaxed">
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-12 sm:h-14 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm sm:text-base font-semibold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <motion.div
+                    className="flex items-center gap-2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    <motion.div
+                      className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                    Processing...
+                  </motion.div>
+                ) : (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-2"
+                  >
+                    {isLogin ? "Login" : "Create Account"}
+                    <motion.div
+                      initial={{ x: 0 }}
+                      whileHover={{ x: 5 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      →
+                    </motion.div>
+                  </motion.span>
+                )}
+              </Button>
+            </motion.div>
+
+            {/* Divider with animation */}
+            <motion.div 
+              className="relative my-6 sm:my-8"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+            >
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-muted/50" />
+              </div>
+              <div className="relative flex justify-center text-xs sm:text-sm">
+                <span className="bg-card px-4 sm:px-5 text-muted-foreground font-medium">OR</span>
+              </div>
+            </motion.div>
+
+            {/* Social Login Buttons with animations */}
+            <motion.div 
+              className="space-y-3 sm:space-y-3.5"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.7 }}
+            >
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => toast.info("Apple Sign In", {
+                    description: "Coming soon!"
+                  })}
+                  disabled={isLoading}
+                  className="w-full h-12 sm:h-14 rounded-full bg-foreground text-background hover:bg-foreground/90 border-0 text-sm sm:text-base font-medium shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                >
+                  <Apple className="w-5 h-5 mr-2 sm:mr-3" />
+                  Log in with Apple
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => toast.info("Google Sign In", {
+                    description: "Coming soon!"
+                  })}
+                  disabled={isLoading}
+                  className="w-full h-12 sm:h-14 rounded-full border-2 text-sm sm:text-base font-medium hover:bg-muted/30 transition-all disabled:opacity-50"
+                >
+                  <Chrome className="w-5 h-5 mr-2 sm:mr-3" />
+                  Log in with Google
+                </Button>
+              </motion.div>
+            </motion.div>
+          </form>
+        </div>
+
+        {/* Right Side - Blue Fluid Background Image */}
+        <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
+          {/* Background Image */}
+          <motion.div
+            className="absolute inset-0"
+            initial={{ scale: 1.1, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 1.5 }}
+          >
+            <img 
+              src={blueFluidBg} 
+              alt="Blue Fluid Background"
+              className="w-full h-full object-cover"
+            />
+            {/* Overlay gradient for depth */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#1e3a8a]/30 via-transparent to-[#172554]/30" />
+          </motion.div>
+          {/* Floating particles overlay */}
+          <div className="absolute inset-0 z-10 pointer-events-none">
+            {[...Array(15)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 bg-white/40 rounded-full"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                }}
+                animate={{
+                  y: [-20, -60, -20],
+                  opacity: [0, 1, 0],
+                  scale: [0, 1.5, 0],
+                }}
+                transition={{
+                  duration: 3 + Math.random() * 2,
+                  repeat: Infinity,
+                  delay: Math.random() * 3,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Glass Footer Text Box */}
+          <div className="absolute bottom-6 sm:bottom-10 left-6 sm:left-10 right-6 sm:right-10 z-20">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
+              whileHover={{ scale: 1.02 }}
+              className="backdrop-blur-xl bg-white/5 rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-6 border border-white/10 shadow-2xl"
+            >
+              <p className="text-white/70 text-[10px] sm:text-xs leading-relaxed">
                 <span className="text-white/90 font-medium">© 2025 CrewDog. All rights reserved.</span>
                 <br />
                 Unauthorized use or reproduction of any content or materials from this site is
-                prohibited. For more information, visit our <span className="text-primary-foreground/90 font-medium">Terms of Service</span> and <span className="text-primary-foreground/90 font-medium">Privacy Policy</span>.
+                prohibited. For more information, visit our{" "}
+                <motion.span 
+                  className="text-primary-foreground/90 font-medium cursor-pointer"
+                  whileHover={{ color: "rgba(255,255,255,0.95)" }}
+                >
+                  Terms of Service
+                </motion.span>{" "}
+                and{" "}
+                <motion.span 
+                  className="text-primary-foreground/90 font-medium cursor-pointer"
+                  whileHover={{ color: "rgba(255,255,255,0.95)" }}
+                >
+                  Privacy Policy
+                </motion.span>.
               </p>
             </motion.div>
           </div>
