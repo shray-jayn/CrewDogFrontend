@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Topbar } from "@/components/layout/Topbar";
 import { Footer } from "@/components/layout/Footer";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Sparkles, Zap, Crown, ArrowLeft, Send } from "lucide-react";
+import { Loader2, Sparkles, Zap, Crown, ArrowLeft, Send, Building2, Globe, Briefcase, Users2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface SearchResult {
@@ -131,6 +131,8 @@ export default function Run() {
     }, 3000);
   };
 
+  const hasSearched = results !== null || isLoading;
+
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
       {/* Premium Background Gradient */}
@@ -167,7 +169,7 @@ export default function Run() {
       </div>
 
       <main className="flex-1 flex flex-col relative">
-        <div className="container mx-auto px-4 max-w-4xl flex-1 flex flex-col py-8">
+        <div className="container mx-auto px-4 flex-1 flex flex-col py-8">
           <Link
             to="/"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors w-fit"
@@ -176,109 +178,20 @@ export default function Run() {
             Back
           </Link>
 
-          {/* Chat-like Interface */}
-          <div className="flex-1 flex flex-col gap-6 max-w-3xl mx-auto w-full">
+          <AnimatePresence mode="wait">
+            {!hasSearched ? (
+              // Centered initial view
+              <motion.div
+                key="centered"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex-1 flex items-center justify-center"
+              >
+                <div className="w-full max-w-2xl">
 
-            {/* Results Display */}
-            <AnimatePresence mode="wait">
-              {results && !isLoading && (
-                <motion.div
-                  key="results"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="mb-4"
-                >
-                  <Card className="glass-card p-6 glow-effect">
-                    <div className="space-y-6">
-                      <div className="flex items-start gap-4">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0 animate-glow-pulse">
-                          <Sparkles className="h-5 w-5 text-primary-foreground" />
-                        </div>
-                        <div className="flex-1 space-y-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Company Found</p>
-                            <p className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                              {results.company}
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">Resources</p>
-                            <div className="flex flex-wrap gap-2">
-                              <a
-                                href={results.website}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-sm transition-colors"
-                              >
-                                🌐 Website
-                              </a>
-                              <a
-                                href={results.careerPage}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-sm transition-colors"
-                              >
-                                💼 Careers
-                              </a>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3">
-                            <p className="text-sm font-medium text-muted-foreground">Key Contacts</p>
-                            {results.contacts.map((contact, index) => (
-                              <div key={index} className="p-4 rounded-lg bg-muted/50 space-y-1">
-                                <p className="font-semibold">{contact.name}</p>
-                                <p className="text-sm text-muted-foreground">{contact.role}</p>
-                                <a
-                                  href={contact.linkedIn}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                                >
-                                  LinkedIn Profile →
-                                </a>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              )}
-
-              {isLoading && (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="mb-4"
-                >
-                  <Card className="glass-card p-6">
-                    <div className="flex items-center gap-4">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      <div className="space-y-1">
-                        <p className="font-medium">Analyzing with AI...</p>
-                        <p className="text-sm text-muted-foreground">
-                          Tracing company information and contacts
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Input Form */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card className="glass-card p-8 border-primary/10 shadow-2xl">
+                  {/* Centered Search Form */}
+                  <Card className="glass-card p-10 border-primary/10 shadow-2xl">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-4">
                     <Input
@@ -391,10 +304,260 @@ export default function Run() {
                       </p>
                     </motion.div>
                   )}
-                </form>
-              </Card>
-            </motion.div>
-          </div>
+                    </form>
+                  </Card>
+                </div>
+              </motion.div>
+            ) : (
+              // Split view after search
+              <motion.div
+                key="split"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto w-full"
+              >
+                {/* Left Column - Form (1/3) */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="lg:col-span-1"
+                >
+                  <Card className="glass-card p-6 h-full">
+                    <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      Search Query
+                    </h2>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="space-y-3">
+                        <Input
+                          type="url"
+                          placeholder="🔗 Job URL"
+                          value={jobUrl}
+                          onChange={(e) => {
+                            setJobUrl(e.target.value);
+                            if (e.target.value) setJobDescription("");
+                          }}
+                          className="h-11 text-sm border-primary/20 bg-background/50"
+                          disabled={isLoading}
+                        />
+
+                        <div className="relative">
+                          <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-border" />
+                          </div>
+                          <div className="relative flex justify-center text-xs">
+                            <span className="bg-card px-2 text-muted-foreground">or</span>
+                          </div>
+                        </div>
+
+                        <Textarea
+                          placeholder="📝 Job description..."
+                          value={jobDescription}
+                          onChange={(e) => {
+                            setJobDescription(e.target.value);
+                            if (e.target.value) setJobUrl("");
+                          }}
+                          className="min-h-[100px] resize-none text-sm border-primary/20 bg-background/50"
+                          disabled={isLoading}
+                        />
+                        {jobDescription && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-primary to-accent transition-all"
+                                style={{ width: `${Math.min((jobDescription.length / 300) * 100, 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground min-w-[60px] text-right">
+                              {jobDescription.length}/300
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Include Leads */}
+                      <div className="p-3 rounded-lg bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/10">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              checked={includeLeads}
+                              onChange={(e) => setIncludeLeads(e.target.checked)}
+                              className="sr-only peer"
+                              disabled={isLoading}
+                            />
+                            <div className="w-9 h-5 bg-muted rounded-full peer-checked:bg-gradient-to-r peer-checked:from-primary peer-checked:to-accent transition-all" />
+                            <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-background rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-xs">Include Leads</p>
+                            <p className="text-xs text-muted-foreground">Extra contacts</p>
+                          </div>
+                        </label>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full h-11 text-sm gap-2 magnetic-button glow-effect"
+                        disabled={isLoading || (!jobUrl && !jobDescription) || !canSearch}
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Searching...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="h-4 w-4" />
+                            New Search
+                          </>
+                        )}
+                      </Button>
+
+                      {!canSearch && !hasUnlimitedSearches && (
+                        <div className="text-center p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                          <p className="text-xs text-destructive">
+                            Limit reached.{" "}
+                            <Link to="/pricing" className="underline">
+                              Upgrade
+                            </Link>
+                          </p>
+                        </div>
+                      )}
+                    </form>
+                  </Card>
+                </motion.div>
+
+                {/* Right Column - Results (2/3) */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="lg:col-span-2"
+                >
+                  <AnimatePresence mode="wait">
+                    {isLoading && (
+                      <motion.div
+                        key="loading"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                      >
+                        <Card className="glass-card p-12 h-full flex items-center justify-center">
+                          <div className="text-center space-y-6">
+                            <div className="relative">
+                              <div className="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-primary to-accent animate-glow-pulse flex items-center justify-center">
+                                <Loader2 className="h-10 w-10 animate-spin text-primary-foreground" />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-xl font-semibold">Analyzing with AI</p>
+                              <p className="text-sm text-muted-foreground">
+                                Extracting company details and key contacts...
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    )}
+
+                    {results && !isLoading && (
+                      <motion.div
+                        key="results"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                      >
+                        <Card className="glass-card p-8 h-full">
+                          <div className="space-y-8">
+                            {/* Company Header */}
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                                  <Building2 className="h-6 w-6 text-primary-foreground" />
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Company Found</p>
+                                  <h3 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                                    {results.company}
+                                  </h3>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Resources */}
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                <Globe className="h-4 w-4 text-primary" />
+                                <h4 className="font-semibold text-sm">Resources</h4>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <a
+                                  href={results.website}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors border border-transparent hover:border-primary/20"
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Globe className="h-4 w-4 text-primary" />
+                                    <span className="text-sm font-medium">Website</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground truncate">Visit company site</p>
+                                </a>
+                                <a
+                                  href={results.careerPage}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors border border-transparent hover:border-primary/20"
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Briefcase className="h-4 w-4 text-primary" />
+                                    <span className="text-sm font-medium">Careers</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground truncate">View open positions</p>
+                                </a>
+                              </div>
+                            </div>
+
+                            {/* Key Contacts */}
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                <Users2 className="h-4 w-4 text-primary" />
+                                <h4 className="font-semibold text-sm">Key Contacts</h4>
+                              </div>
+                              <div className="space-y-3">
+                                {results.contacts.map((contact, index) => (
+                                  <div
+                                    key={index}
+                                    className="p-4 rounded-xl bg-gradient-to-br from-muted/50 to-muted/30 border border-border/50 hover:border-primary/20 transition-colors"
+                                  >
+                                    <div className="flex items-start justify-between gap-4">
+                                      <div className="flex-1">
+                                        <p className="font-semibold mb-1">{contact.name}</p>
+                                        <p className="text-sm text-muted-foreground mb-2">{contact.role}</p>
+                                        <a
+                                          href={contact.linkedIn}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                                        >
+                                          View LinkedIn Profile →
+                                        </a>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
 
