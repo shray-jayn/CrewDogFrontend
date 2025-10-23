@@ -168,10 +168,10 @@ export default function Run() {
       </div>
 
       <main className="flex-1 flex flex-col relative">
-        <div className="container mx-auto px-4 flex-1 flex flex-col py-8">
+        <div className="container mx-auto px-4 flex-1 flex flex-col py-4">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors w-fit"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors w-fit"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
@@ -190,21 +190,21 @@ export default function Run() {
                 <div className="w-full max-w-2xl">
 
                   {/* Centered Search Form */}
-                  <Card className="relative backdrop-blur-xl bg-card/80 border-2 border-primary/10 p-8 shadow-xl">
+                  <Card className="relative backdrop-blur-xl bg-card/80 border-2 border-primary/10 p-6 shadow-xl">
                     {/* Subtle gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-accent/[0.02] rounded-lg pointer-events-none" />
                     
                     <div className="relative">
-                      <div className="mb-6 text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 mb-3">
-                          <Sparkles className="h-6 w-6 text-primary" />
+                      <div className="mb-4 text-center">
+                        <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 mb-2">
+                          <Sparkles className="h-5 w-5 text-primary" />
                         </div>
-                        <h1 className="text-2xl font-semibold mb-1">AI Job Search</h1>
-                        <p className="text-sm text-muted-foreground">Find companies and decision makers instantly</p>
+                        <h1 className="text-xl font-semibold mb-1">AI Job Search</h1>
+                        <p className="text-xs text-muted-foreground">Find companies and decision makers instantly</p>
                       </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-3.5">
+                  <div className="space-y-3">
                     <div className="group">
                       <Input
                         type="url"
@@ -214,34 +214,34 @@ export default function Run() {
                           setJobUrl(e.target.value);
                           if (e.target.value) setJobDescription("");
                         }}
-                        className="h-11 border-border/50 bg-background/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
+                        className="h-10 text-sm border-border/50 bg-background/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
                         disabled={isLoading}
                       />
                     </div>
 
-                    <div className="relative">
+                    <div className="relative py-1">
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-border/50" />
                       </div>
                       <div className="relative flex justify-center">
-                        <span className="bg-card px-3 text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">or</span>
+                        <span className="bg-card px-2 text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">or</span>
                       </div>
                     </div>
 
                     <div className="group">
                       <Textarea
-                        placeholder="Paste full job description...&#10;&#10;• Minimum 300 characters&#10;• Include location&#10;• More detail = better results"
+                        placeholder="Paste job description (min. 300 chars, include location)"
                         value={jobDescription}
                         onChange={(e) => {
                           setJobDescription(e.target.value);
                           if (e.target.value) setJobUrl("");
                         }}
-                        className="min-h-[130px] resize-none border-border/50 bg-background/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
+                        className="min-h-[90px] resize-none text-sm border-border/50 bg-background/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
                         disabled={isLoading}
                       />
                       {jobDescription && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="flex-1 h-1 bg-muted/50 rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-300"
                               style={{ width: `${Math.min((jobDescription.length / 300) * 100, 100)}%` }}
@@ -255,7 +255,7 @@ export default function Run() {
                     </div>
                   </div>
 
-                  <label className="flex items-center gap-3 p-3.5 border border-primary/10 rounded-lg cursor-pointer hover:bg-primary/5 hover:border-primary/20 transition-all group">
+                  <label className="flex items-center gap-2.5 p-2.5 border border-primary/10 rounded-lg cursor-pointer hover:bg-primary/5 hover:border-primary/20 transition-all group">
                     <input
                       type="checkbox"
                       checked={includeLeads}
@@ -263,16 +263,16 @@ export default function Run() {
                       className="w-4 h-4 rounded border-input accent-primary"
                       disabled={isLoading}
                     />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">Include potential leads</div>
-                      <div className="text-xs text-muted-foreground">Find additional contacts beyond hiring managers</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium">Include potential leads</div>
+                      <div className="text-xs text-muted-foreground/80">Additional decision-makers</div>
                     </div>
-                    <Sparkles className="h-4 w-4 text-primary/60 group-hover:text-primary transition-colors" />
+                    <Sparkles className="h-4 w-4 text-primary/60 group-hover:text-primary transition-colors flex-shrink-0" />
                   </label>
 
                   <Button
                     type="submit"
-                    className="w-full h-11 gap-2 font-medium shadow-lg hover:shadow-xl transition-all"
+                    className="w-full h-10 gap-2 text-sm font-medium shadow-lg hover:shadow-xl transition-all"
                     disabled={isLoading || (!jobUrl && !jobDescription) || !canSearch}
                   >
                     {isLoading ? (
