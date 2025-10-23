@@ -50,11 +50,11 @@ export default function Run() {
   const getPlanColor = () => {
     switch (plan) {
       case "Admin":
-        return "bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400";
+        return "bg-gradient-to-r from-amber-500 to-orange-500 text-white";
       case "Pro":
-        return "bg-primary/10 border-primary/20 text-primary";
+        return "bg-gradient-to-r from-primary to-accent text-primary-foreground";
       default:
-        return "bg-muted/50 border-border text-muted-foreground";
+        return "bg-muted text-muted-foreground";
     }
   };
 
@@ -135,9 +135,10 @@ export default function Run() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
-      {/* Subtle tech background */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05),transparent_50%),radial-gradient(circle_at_70%_80%,hsl(var(--accent)/0.05),transparent_50%)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
+      {/* Premium Background Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
+      <div className="absolute top-20 right-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-20 left-20 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
       
       <Topbar />
 
@@ -146,20 +147,20 @@ export default function Run() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className={`backdrop-blur-lg px-3 py-1.5 rounded-full shadow-lg border ${getPlanColor()}`}
+          className={`glass-card px-3 py-2 rounded-full shadow-lg ${getPlanColor()}`}
         >
-          <div className="flex items-center gap-2 text-xs font-medium">
+          <div className="flex items-center gap-2 text-xs font-semibold">
             {getPlanIcon()}
             <span>{plan}</span>
             {!hasUnlimitedSearches && (
               <>
-                <span className="opacity-40">•</span>
-                <span className="tabular-nums">{searchesUsed}/{totalSearches}</span>
+                <span className="opacity-50">•</span>
+                <span>{searchesUsed}/{totalSearches}</span>
               </>
             )}
             {hasUnlimitedSearches && (
               <>
-                <span className="opacity-40">•</span>
+                <span className="opacity-50">•</span>
                 <span>∞</span>
               </>
             )}
@@ -190,101 +191,150 @@ export default function Run() {
                 <div className="w-full max-w-2xl">
 
                   {/* Centered Search Form */}
-                  <Card className="relative backdrop-blur-xl bg-card/80 border-2 border-primary/10 p-8 shadow-xl">
-                    {/* Subtle gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-accent/[0.02] rounded-lg pointer-events-none" />
-                    
-                    <div className="relative">
-                      <div className="mb-6 text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 mb-3">
-                          <Sparkles className="h-6 w-6 text-primary" />
-                        </div>
-                        <h1 className="text-2xl font-semibold mb-1">AI Job Search</h1>
-                        <p className="text-sm text-muted-foreground">Find companies and decision makers instantly</p>
+                  <Card className="glass-card p-12 border-primary/10 shadow-2xl backdrop-blur-xl">
+                    <div className="mb-8 text-center">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 mb-4">
+                        <Sparkles className="h-8 w-8 text-primary" />
                       </div>
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="space-y-4">
-                    <div className="group">
-                      <Input
-                        type="url"
-                        placeholder="https://linkedin.com/jobs/..."
-                        value={jobUrl}
-                        onChange={(e) => {
-                          setJobUrl(e.target.value);
-                          if (e.target.value) setJobDescription("");
-                        }}
-                        className="h-11 border-border/50 bg-background/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
-                        disabled={isLoading}
-                      />
+                      <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                        AI Search Assistant
+                      </h1>
+                      <p className="text-muted-foreground">
+                        Discover companies and key contacts from any job posting
+                      </p>
                     </div>
 
-                    <div className="relative">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-5">
+                    {/* URL Input with Premium Styling */}
+                    <div className="group">
+                      <label className="block text-sm font-medium mb-2 text-foreground/80">
+                        LinkedIn Job URL
+                      </label>
+                      <div className="relative">
+                        <Input
+                          type="url"
+                          placeholder="https://linkedin.com/jobs/..."
+                          value={jobUrl}
+                          onChange={(e) => {
+                            setJobUrl(e.target.value);
+                            if (e.target.value) setJobDescription("");
+                          }}
+                          className="h-14 text-base pl-4 pr-4 bg-background/60 backdrop-blur-sm border-2 border-primary/10 hover:border-primary/20 focus:border-primary/40 transition-all duration-300 rounded-xl shadow-sm hover:shadow-md focus:shadow-lg"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Elegant Divider */}
+                    <div className="relative py-4">
                       <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-border/50" />
+                        <div className="w-full border-t border-gradient-to-r from-transparent via-border to-transparent" />
                       </div>
                       <div className="relative flex justify-center">
-                        <span className="bg-card px-3 text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">or</span>
+                        <span className="bg-card px-6 py-1.5 text-xs font-semibold text-muted-foreground/60 tracking-wider uppercase rounded-full border border-border/50">
+                          Or provide details
+                        </span>
                       </div>
                     </div>
 
+                    {/* Description Textarea with Premium Styling */}
                     <div className="group">
+                      <label className="block text-sm font-medium mb-2 text-foreground/80">
+                        Job Description
+                      </label>
                       <Textarea
-                        placeholder="Paste full job description...&#10;&#10;• Minimum 300 characters&#10;• Include location&#10;• More detail = better results"
+                        placeholder="Paste the complete job description here. Include details like role, requirements, location, and company info for best results..."
                         value={jobDescription}
                         onChange={(e) => {
                           setJobDescription(e.target.value);
                           if (e.target.value) setJobUrl("");
                         }}
-                        className="min-h-[130px] resize-none border-border/50 bg-background/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
+                        className="min-h-[160px] resize-none text-base p-4 bg-background/60 backdrop-blur-sm border-2 border-primary/10 hover:border-primary/20 focus:border-primary/40 transition-all duration-300 rounded-xl shadow-sm hover:shadow-md focus:shadow-lg"
                         disabled={isLoading}
                       />
                       {jobDescription && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-muted/50 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-300"
-                              style={{ width: `${Math.min((jobDescription.length / 300) * 100, 100)}%` }}
-                            />
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-2 bg-muted/50 rounded-full overflow-hidden backdrop-blur-sm">
+                              <div 
+                                className="h-full bg-gradient-to-r from-primary via-primary to-accent transition-all duration-500 rounded-full"
+                                style={{ width: `${Math.min((jobDescription.length / 300) * 100, 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-muted-foreground min-w-[90px] text-right tabular-nums">
+                              {jobDescription.length} / 300
+                            </span>
                           </div>
-                          <span className="text-xs font-medium text-muted-foreground tabular-nums">
-                            {jobDescription.length}/300
-                          </span>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className={`w-2 h-2 rounded-full transition-colors ${
+                              jobDescription.length >= 300 ? 'bg-green-500' : 'bg-amber-500'
+                            }`} />
+                            <span className="text-muted-foreground">
+                              {jobDescription.length >= 300 
+                                ? 'Minimum requirement met' 
+                                : `${300 - jobDescription.length} more characters needed`}
+                            </span>
+                          </div>
                         </div>
                       )}
+                      <p className="mt-2 text-xs text-muted-foreground/70">
+                        💡 Tip: Include location information for accurate results
+                      </p>
                     </div>
                   </div>
 
-                  <label className="flex items-center gap-3 p-3.5 border border-primary/10 rounded-lg cursor-pointer hover:bg-primary/5 hover:border-primary/20 transition-all group">
-                    <input
-                      type="checkbox"
-                      checked={includeLeads}
-                      onChange={(e) => setIncludeLeads(e.target.checked)}
-                      className="w-4 h-4 rounded border-input accent-primary"
-                      disabled={isLoading}
-                    />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">Include potential leads</div>
-                      <div className="text-xs text-muted-foreground">Find additional contacts beyond hiring managers</div>
+                  {/* Premium Leads Toggle */}
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative p-5 rounded-2xl bg-gradient-to-br from-primary/[0.07] via-background/50 to-accent/[0.07] border-2 border-primary/10 backdrop-blur-sm hover:border-primary/20 transition-all duration-300">
+                      <label className="flex items-center gap-4 cursor-pointer">
+                        <div className="relative flex-shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={includeLeads}
+                            onChange={(e) => setIncludeLeads(e.target.checked)}
+                            className="sr-only peer"
+                            disabled={isLoading}
+                          />
+                          <div className="w-14 h-7 bg-muted/80 rounded-full peer-checked:bg-gradient-to-r peer-checked:from-primary peer-checked:to-accent transition-all duration-300 shadow-inner" />
+                          <div className="absolute left-1 top-1 w-5 h-5 bg-background rounded-full transition-all duration-300 peer-checked:translate-x-7 shadow-lg" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-base mb-0.5 flex items-center gap-2">
+                            Include Potential Leads Search
+                            <span className="px-2 py-0.5 text-xs font-bold bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-full">
+                              Pro
+                            </span>
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Discover additional decision-makers and influencers beyond the hiring manager
+                          </p>
+                        </div>
+                        <Sparkles className="h-6 w-6 text-primary/70 flex-shrink-0 group-hover:text-primary transition-colors" />
+                      </label>
                     </div>
-                    <Sparkles className="h-4 w-4 text-primary/60 group-hover:text-primary transition-colors" />
-                  </label>
+                  </div>
 
+                  {/* Premium CTA Button */}
                   <Button
                     type="submit"
-                    className="w-full h-11 gap-2 font-medium shadow-lg hover:shadow-xl transition-all"
+                    className="w-full h-16 text-lg gap-3 font-bold relative overflow-hidden group bg-gradient-to-r from-primary to-accent hover:shadow-2xl hover:shadow-primary/25 transition-all duration-300 rounded-xl"
                     disabled={isLoading || (!jobUrl && !jobDescription) || !canSearch}
+                    size="lg"
                   >
+                    <div className="absolute inset-0 bg-gradient-to-r from-accent to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,.1)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%,100%_100%] bg-[position:-100%_0,0_0] bg-no-repeat group-hover:bg-[position:200%_0,0_0] transition-[background-position] duration-1000" />
                     {isLoading ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Analyzing...
+                        <Loader2 className="h-6 w-6 animate-spin relative z-10" />
+                        <span className="relative z-10">Analyzing with AI</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-4 w-4" />
-                        Run AI Search
-                        <Send className="h-4 w-4" />
+                        <Sparkles className="h-6 w-6 relative z-10" />
+                        <span className="relative z-10">Run AI Search</span>
+                        <Send className="h-5 w-5 relative z-10 group-hover:translate-x-1 transition-transform" />
                       </>
                     )}
                   </Button>
@@ -304,8 +354,7 @@ export default function Run() {
                       </p>
                     </motion.div>
                   )}
-                </form>
-                    </div>
+                    </form>
                   </Card>
                 </div>
               </motion.div>
@@ -324,83 +373,93 @@ export default function Run() {
                   animate={{ opacity: 1, x: 0 }}
                   className="lg:col-span-1"
                 >
-                  <Card className="backdrop-blur-xl bg-card/80 border-2 border-primary/10 p-6 h-full shadow-lg">
-                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                      </div>
-                      <h2 className="text-sm font-semibold">Search Query</h2>
-                    </div>
+                  <Card className="glass-card p-6 h-full">
+                    <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      Search Query
+                    </h2>
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div className="space-y-3">
                         <Input
                           type="url"
-                          placeholder="Job URL"
+                          placeholder="🔗 Job URL"
                           value={jobUrl}
                           onChange={(e) => {
                             setJobUrl(e.target.value);
                             if (e.target.value) setJobDescription("");
                           }}
-                          className="h-9 text-sm border-border/50 bg-background/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                          className="h-11 text-sm border-primary/20 bg-background/50"
                           disabled={isLoading}
                         />
 
                         <div className="relative">
                           <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-border/50" />
+                            <div className="w-full border-t border-border" />
                           </div>
-                          <div className="relative flex justify-center">
-                            <span className="bg-card px-2 text-xs text-muted-foreground/70 uppercase tracking-wide">or</span>
+                          <div className="relative flex justify-center text-xs">
+                            <span className="bg-card px-2 text-muted-foreground">or</span>
                           </div>
                         </div>
 
                         <Textarea
-                          placeholder="Job description..."
+                          placeholder="📝 Job description..."
                           value={jobDescription}
                           onChange={(e) => {
                             setJobDescription(e.target.value);
                             if (e.target.value) setJobUrl("");
                           }}
-                          className="min-h-[80px] resize-none text-sm border-border/50 bg-background/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                          className="min-h-[100px] resize-none text-sm border-primary/20 bg-background/50"
                           disabled={isLoading}
                         />
                         {jobDescription && (
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1 bg-muted/50 rounded-full overflow-hidden">
+                            <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                               <div 
-                                className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-300"
+                                className="h-full bg-gradient-to-r from-primary to-accent transition-all"
                                 style={{ width: `${Math.min((jobDescription.length / 300) * 100, 100)}%` }}
                               />
                             </div>
-                            <span className="text-xs text-muted-foreground tabular-nums">{jobDescription.length}/300</span>
+                            <span className="text-xs text-muted-foreground min-w-[60px] text-right">
+                              {jobDescription.length}/300
+                            </span>
                           </div>
                         )}
                       </div>
 
-                      <label className="flex items-center gap-2 p-2.5 border border-primary/10 rounded cursor-pointer hover:bg-primary/5 hover:border-primary/20 transition-all">
-                        <input
-                          type="checkbox"
-                          checked={includeLeads}
-                          onChange={(e) => setIncludeLeads(e.target.checked)}
-                          className="w-4 h-4 rounded accent-primary"
-                          disabled={isLoading}
-                        />
-                        <span className="text-xs font-medium">Include leads</span>
-                      </label>
+                      {/* Include Leads */}
+                      <div className="p-3 rounded-lg bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/10">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              checked={includeLeads}
+                              onChange={(e) => setIncludeLeads(e.target.checked)}
+                              className="sr-only peer"
+                              disabled={isLoading}
+                            />
+                            <div className="w-9 h-5 bg-muted rounded-full peer-checked:bg-gradient-to-r peer-checked:from-primary peer-checked:to-accent transition-all" />
+                            <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-background rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-xs">Include Leads</p>
+                            <p className="text-xs text-muted-foreground">Extra contacts</p>
+                          </div>
+                        </label>
+                      </div>
 
                       <Button
                         type="submit"
-                        className="w-full h-9 text-sm gap-2 shadow-md hover:shadow-lg transition-all"
+                        className="w-full h-11 text-sm gap-2 magnetic-button glow-effect"
                         disabled={isLoading || (!jobUrl && !jobDescription) || !canSearch}
                       >
                         {isLoading ? (
                           <>
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin" />
                             Searching...
                           </>
                         ) : (
                           <>
-                            <Send className="h-3 w-3" />
+                            <Send className="h-4 w-4" />
                             New Search
                           </>
                         )}
