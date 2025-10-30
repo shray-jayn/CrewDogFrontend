@@ -1,69 +1,81 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/auth/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, ArrowLeft, CheckCircle2, Sparkles, Plus } from "lucide-react";
+import {
+  LockKeyhole,
+  CheckCircle2,
+  ArrowLeft,
+  Sparkles,
+  Plus,
+} from "lucide-react";
 import { toast } from "sonner";
 import blueFluidBg from "@/assets/blue-fluid-bg.jpg";
-import { useAuth } from "@/auth/AuthProvider";
 
-export default function ForgotPassword() {
+export default function ResetPassword() {
   const navigate = useNavigate();
-  const { requestPasswordReset } = useAuth();
+  const { updatePassword } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [pw1, setPw1] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [saving, setSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
+  const [pw1Focused, setPw1Focused] = useState(false);
+  const [pw2Focused, setPw2Focused] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Validate magic-link session provided by Supabase
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        toast.error("This reset link is invalid or expired.");
+      } else {
+        setReady(true);
+      }
+    })();
+  }, []);
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    // Validation
-    if (!email) {
-      toast.error("Email is required", {
-        description: "Please enter your email address",
+    if (pw1.length < 6) {
+      toast.error("Password too short", {
+        description: "Must be at least 6 characters.",
       });
       return;
     }
-    if (!email.includes("@")) {
-      toast.error("Invalid email", {
-        description: "Please enter a valid email address",
-      });
+    if (pw1 !== pw2) {
+      toast.error("Passwords don't match");
       return;
     }
-
     try {
-      setIsLoading(true);
-
-      // Real Supabase request via adapter.
-      // Adapter default redirect is `${origin}/reset-password`.
-      await requestPasswordReset(email);
-
+      setSaving(true);
+      await updatePassword(pw1);
       setIsSuccess(true);
-      toast.success("Reset link sent!", {
-        description: `Check your inbox at ${email}`,
-        icon: <CheckCircle2 className="w-5 h-5" />,
+      toast.success("Password updated", {
+        description: "You can now sign in with your new password.",
       });
 
-      // Optional redirect after a short delay
-      setTimeout(() => navigate("/login"), 3000);
-    } catch (err: any) {
-      toast.error("Failed to send reset email", {
-        description: err?.message ?? "Please try again later.",
+      // Redirect after a short delay
+      setTimeout(() => navigate("/login", { replace: true }), 2500);
+    } catch (e: any) {
+      toast.error("Failed to update password", {
+        description: e?.message ?? "Try again later.",
       });
     } finally {
-      setIsLoading(false);
+      setSaving(false);
     }
-  };
+  }
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10 relative overflow-hidden">
       {/* Subtle ambient background */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-muted/20 via-transparent to-transparent" />
 
-      {/* Main Card Container */}
+      {/* Main Card Container - Full Screen */}
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -117,48 +129,85 @@ export default function ForgotPassword() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                 >
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 md:mb-3 tracking-tight">
-                    Reset Your Password
+                    Set a New Password
                   </h1>
                   <p className="text-sm md:text-base text-muted-foreground flex items-center gap-2">
-                    Enter your email to receive a reset link
+                    Enter and confirm your new password
                     <Sparkles className="w-4 h-4 text-primary" />
                   </p>
                 </motion.div>
 
                 {/* Form */}
-                <form
-                  onSubmit={handleSubmit}
-                  className="space-y-6 md:space-y-8"
-                >
-                  {/* Email Input with animation */}
-                  <motion.div
-                    className="relative"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                  >
-                    <Input
-                      type="email"
-                      placeholder="Enter your email address"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onFocus={() => setEmailFocused(true)}
-                      onBlur={() => setEmailFocused(false)}
-                      className="pl-5 pr-12 h-12 sm:h-14 rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-all duration-300 text-sm sm:text-base"
-                      disabled={isLoading}
-                    />
-                    <motion.div
-                      animate={{
-                        scale: emailFocused ? 1.1 : 1,
-                        color: emailFocused
-                          ? "hsl(var(--primary))"
-                          : "hsl(var(--muted-foreground))",
-                      }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Mail className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5" />
-                    </motion.div>
-                  </motion.div>
+                <form onSubmit={onSubmit} className="space-y-6 md:space-y-8">
+                  {!ready && (
+                    <p className="text-sm text-muted-foreground">
+                      Validating reset link…
+                    </p>
+                  )}
+
+                  {ready && (
+                    <>
+                      {/* New Password */}
+                      <motion.div
+                        className="relative"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                      >
+                        <Input
+                          type="password"
+                          placeholder="New password"
+                          value={pw1}
+                          onChange={(e) => setPw1(e.target.value)}
+                          onFocus={() => setPw1Focused(true)}
+                          onBlur={() => setPw1Focused(false)}
+                          disabled={saving}
+                          className="pl-5 pr-12 h-12 sm:h-14 rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-all duration-300 text-sm sm:text-base"
+                        />
+                        <motion.div
+                          animate={{
+                            scale: pw1Focused ? 1.1 : 1,
+                            color: pw1Focused
+                              ? "hsl(var(--primary))"
+                              : "hsl(var(--muted-foreground))",
+                          }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <LockKeyhole className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5" />
+                        </motion.div>
+                      </motion.div>
+
+                      {/* Confirm Password */}
+                      <motion.div
+                        className="relative"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: 0.3 }}
+                      >
+                        <Input
+                          type="password"
+                          placeholder="Confirm new password"
+                          value={pw2}
+                          onChange={(e) => setPw2(e.target.value)}
+                          onFocus={() => setPw2Focused(true)}
+                          onBlur={() => setPw2Focused(false)}
+                          disabled={saving}
+                          className="pl-5 pr-12 h-12 sm:h-14 rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-all duration-300 text-sm sm:text-base"
+                        />
+                        <motion.div
+                          animate={{
+                            scale: pw2Focused ? 1.1 : 1,
+                            color: pw2Focused
+                              ? "hsl(var(--primary))"
+                              : "hsl(var(--muted-foreground))",
+                          }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <LockKeyhole className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5" />
+                        </motion.div>
+                      </motion.div>
+                    </>
+                  )}
 
                   {/* Submit Button */}
                   <motion.div
@@ -168,10 +217,10 @@ export default function ForgotPassword() {
                   >
                     <Button
                       type="submit"
-                      disabled={isLoading}
+                      disabled={!ready || saving}
                       className="w-full h-12 sm:h-14 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm sm:text-base font-semibold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isLoading ? (
+                      {saving ? (
                         <motion.div
                           className="flex items-center gap-2"
                           initial={{ opacity: 0 }}
@@ -186,7 +235,7 @@ export default function ForgotPassword() {
                               ease: "linear",
                             }}
                           />
-                          Sending Reset Link...
+                          Updating...
                         </motion.div>
                       ) : (
                         <motion.span
@@ -194,7 +243,7 @@ export default function ForgotPassword() {
                           animate={{ opacity: 1 }}
                           className="flex items-center gap-2"
                         >
-                          Send Reset Link
+                          Update password
                           <motion.div
                             initial={{ x: 0 }}
                             whileHover={{ x: 5 }}
@@ -215,10 +264,10 @@ export default function ForgotPassword() {
                     className="bg-muted/30 rounded-2xl p-4 sm:p-5 border border-muted"
                   >
                     <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                      💡{" "}
+                      🔐{" "}
                       <span className="font-medium text-foreground">Tip:</span>{" "}
-                      Check your spam folder if you don't see the email within a
-                      few minutes.
+                      Use at least 6 characters. For better security, include a
+                      mix of letters, numbers, and symbols.
                     </p>
                   </motion.div>
                 </form>
@@ -246,7 +295,7 @@ export default function ForgotPassword() {
                   transition={{ delay: 0.2 }}
                   className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3"
                 >
-                  Check Your Email
+                  Password Updated
                 </motion.h2>
 
                 <motion.p
@@ -255,9 +304,7 @@ export default function ForgotPassword() {
                   transition={{ delay: 0.3 }}
                   className="text-sm sm:text-base text-muted-foreground mb-8"
                 >
-                  We've sent a password reset link to
-                  <br />
-                  <span className="font-semibold text-foreground">{email}</span>
+                  You can now log in using your new password.
                 </motion.p>
 
                 <motion.div
@@ -266,14 +313,14 @@ export default function ForgotPassword() {
                   transition={{ delay: 0.4 }}
                   className="text-sm text-muted-foreground"
                 >
-                  Redirecting to login in 3 seconds...
+                  Redirecting to login…
                 </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Right Side - Blue Fluid Background */}
+        {/* Right Side - Blue Fluid Background Image */}
         <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
           <motion.div
             className="absolute inset-0"
@@ -288,8 +335,7 @@ export default function ForgotPassword() {
             />
             <div className="absolute inset-0 bg-gradient-to-br from-[#1e3a8a]/30 via-transparent to-[#172554]/30" />
           </motion.div>
-
-          {/* Floating particles */}
+          {/* Floating particles overlay */}
           <div className="absolute inset-0 z-10 pointer-events-none">
             {[...Array(15)].map((_, i) => (
               <motion.div
