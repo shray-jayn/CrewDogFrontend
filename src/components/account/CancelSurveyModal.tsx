@@ -12,7 +12,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { Gift, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
+import { sendCancelFeedback } from "@/services/billing";
+import { notify } from "@/lib/notify";
 
 export default function CancelSurveyModal({
   open,
@@ -25,6 +27,24 @@ export default function CancelSurveyModal({
 }) {
   const [reason, setReason] = useState("");
   const [other, setOther] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const handleContinue = async () => {
+    if (!reason) return;
+    setBusy(true);
+    try {
+      await sendCancelFeedback(
+        reason,
+        reason === "other" ? other.trim() : undefined
+      );
+      onOpenChange(false);
+      onContinue();
+    } catch (e: any) {
+      notify(e?.message || "Couldn’t save feedback.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -81,11 +101,19 @@ export default function CancelSurveyModal({
         </AnimatePresence>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={busy}
+          >
             Keep Subscription
           </Button>
-          <Button variant="destructive" onClick={onContinue} disabled={!reason}>
-            Continue
+          <Button
+            variant="destructive"
+            onClick={handleContinue}
+            disabled={!reason || busy}
+          >
+            {busy ? "Saving…" : "Continue"}
           </Button>
         </DialogFooter>
       </DialogContent>

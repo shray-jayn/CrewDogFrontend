@@ -1,19 +1,63 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Calendar, CheckCircle2, Crown, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import type { AccountUser } from "../data/account.types";
+import { AccountUser } from "@/data/account.types";
+import { notify } from "@/lib/notify";
+import { startCheckout, renewNow, confirmIfRequired } from "@/services/billing";
+import type { NormalizedSummary } from "@/services/account";
 
 export default function SubscriptionCard({
   user,
+  summary,
+  onRefresh,
   onCancel,
 }: {
   user: AccountUser;
+  summary: NormalizedSummary | null;
+  onRefresh: () => Promise<void> | void;
   onCancel: () => void;
 }) {
+  const pro = summary?.pro ?? user.plan !== "Free";
+  const unlimited = summary?.unlimited ?? false;
+
+  const used = summary?.used ?? user.quota.used;
+  const cap = summary?.cap ?? user.quota.total;
+  const remaining = summary?.remaining ?? Math.max(0, cap - used);
+  const renewalDate = summary?.renewalDate ?? user.renewalDate;
+  const atCap = !unlimited && cap > 0 && used >= cap;
+  const quotaPct = unlimited
+    ? 100
+    : Math.min(100, Math.max(0, (used / Math.max(cap, 1)) * 100));
+
+  const planLabel = unlimited ? "Admin" : pro ? "Pro" : "Free";
+  const planSubtitle = unlimited
+    ? "You have unlimited searches."
+    : pro
+    ? "Thanks for being a premium member!"
+    : "Upgrade to unlock more searches";
+
+  const handleUpgrade = async () => {
+    try {
+      await startCheckout();
+    } catch (e: any) {
+      notify(e?.message || "Unable to start checkout.", "error");
+    }
+  };
+
+  const handleRenewNow = async () => {
+    try {
+      const resp = await renewNow();
+      await confirmIfRequired(resp?.client_secret);
+      notify("Your cycle was reset. You now have fresh credits.", "success");
+      await onRefresh();
+    } catch (e: any) {
+      notify(e?.message || "Could not renew now.", "error");
+    }
+  };
+
   return (
     <section>
       <div className="flex items-center gap-2 mb-6">
@@ -32,9 +76,9 @@ export default function SubscriptionCard({
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <Badge className="text-lg px-4 py-1 bg-gradient-to-r from-primary to-purple-500">
-                  {user.plan}
+                  {planLabel}
                 </Badge>
-                {user.plan !== "Free" && (
+                {(pro || unlimited) && (
                   <Badge
                     variant="outline"
                     className="gap-1 text-green-500 border-green-500/20"
@@ -44,13 +88,9 @@ export default function SubscriptionCard({
                   </Badge>
                 )}
               </div>
-              <p className="text-muted-foreground">
-                {user.plan === "Free"
-                  ? "Upgrade to unlock unlimited features"
-                  : "Thanks for being a premium member!"}
-              </p>
+              <p className="text-muted-foreground">{planSubtitle}</p>
             </div>
-            {user.plan !== "Free" && (
+            {(pro || unlimited) && (
               <motion.div
                 animate={{ rotate: [0, 10, -10, 0] }}
                 transition={{ duration: 2, repeat: Infinity }}
@@ -64,14 +104,11 @@ export default function SubscriptionCard({
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium">Monthly Quota</span>
               <span className="text-sm font-bold">
-                {user.quota.used} / {user.quota.total} searches
+                {unlimited ? "Unlimited" : `${used} / ${cap} searches`}
               </span>
             </div>
             <div className="relative">
-              <Progress
-                value={(user.quota.used / user.quota.total) * 100}
-                className="h-3"
-              />
+              <Progress value={quotaPct} className="h-3" />
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
                 animate={{ x: ["-100%", "200%"] }}
@@ -81,22 +118,37 @@ export default function SubscriptionCard({
             <div className="flex items-center justify-between mt-2">
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                Resets on {user.renewalDate}
+                {unlimited
+                  ? "—"
+                  : renewalDate
+                  ? `Resets on ${renewalDate}`
+                  : "—"}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {user.quota.total - user.quota.used} remaining
-              </span>
+              {!unlimited && (
+                <span className="text-xs text-muted-foreground">
+                  {remaining} remaining
+                </span>
+              )}
             </div>
           </div>
 
           <div className="flex gap-3">
-            <Link to="/pricing" className="flex-1">
-              <Button className="w-full group" size="lg">
+            {!unlimited && !pro && (
+              <Button
+                className="flex-1 group"
+                size="lg"
+                onClick={handleUpgrade}
+              >
                 <Crown className="mr-2 h-4 w-4 group-hover:rotate-12 transition-transform" />
-                {user.plan === "Free" ? "Upgrade Plan" : "Change Plan"}
+                Upgrade Plan
               </Button>
-            </Link>
-            {user.plan !== "Free" && (
+            )}
+            {pro && !unlimited && atCap && (
+              <Button size="lg" className="flex-1" onClick={handleRenewNow}>
+                Renew now
+              </Button>
+            )}
+            {pro && (
               <Button variant="outline" size="lg" onClick={onCancel}>
                 Cancel
               </Button>

@@ -12,3 +12,9 @@ export const supabase = createClient(
     },
   }
 );
+
+export async function getIdentity() {
+  const { data: { session } = {} } = await supabase.auth.getSession();
+  const user = session?.user || null;
+  return { userId: user?.id ?? null, email: user?.email ?? null };
+}

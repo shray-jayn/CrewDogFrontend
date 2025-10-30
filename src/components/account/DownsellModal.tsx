@@ -11,6 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Gift, Sparkles } from "lucide-react";
+import { cancelSubscription, downgradeToTwoPounds } from "@/services/billing";
+import { notify } from "@/lib/notify";
+import { useState } from "react";
 
 export default function DownsellModal({
   open,
@@ -23,6 +26,39 @@ export default function DownsellModal({
   onAccept: () => void;
   onCancelAnyway: () => void;
 }) {
+  const [busy, setBusy] = useState<"accept" | "cancel" | null>(null);
+
+  const accept = async () => {
+    setBusy("accept");
+    try {
+      await downgradeToTwoPounds();
+      notify("Your subscription price was downgraded to £2/month!", "success");
+      onAccept();
+      onOpenChange(false);
+    } catch (e: any) {
+      notify(e?.message || "Plan change failed.", "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const cancelNow = async () => {
+    setBusy("cancel");
+    try {
+      await cancelSubscription();
+      notify(
+        "Cancellation scheduled. You keep access until period end.",
+        "success"
+      );
+      onCancelAnyway();
+      onOpenChange(false);
+    } catch (e: any) {
+      notify(e?.message || "Cancel failed.", "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -57,12 +93,16 @@ export default function DownsellModal({
         </Card>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancelAnyway}>
-            Cancel Anyway
+          <Button
+            variant="outline"
+            onClick={cancelNow}
+            disabled={busy !== null}
+          >
+            {busy === "cancel" ? "Cancelling…" : "Cancel Anyway"}
           </Button>
-          <Button onClick={onAccept} className="flex-1">
+          <Button onClick={accept} className="flex-1" disabled={busy !== null}>
             <Crown className="mr-2 h-4 w-4" />
-            Accept Offer
+            {busy === "accept" ? "Applying…" : "Accept Offer"}
           </Button>
         </DialogFooter>
       </DialogContent>

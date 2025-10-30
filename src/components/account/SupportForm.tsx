@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { API_BASE } from "@/lib/config";
 
 export default function SupportForm({ userEmail }: { userEmail: string }) {
   return (
@@ -24,9 +25,43 @@ export default function SupportForm({ userEmail }: { userEmail: string }) {
       <Card className="p-8 glass-card">
         <form
           className="space-y-6"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            toast.success("Message sent! We'll get back to you soon.");
+            const email = (
+              e.currentTarget.querySelector("#supportEmail") as HTMLInputElement
+            )?.value?.trim();
+            const message = (
+              e.currentTarget.querySelector(
+                "#supportMessage"
+              ) as HTMLTextAreaElement
+            )?.value?.trim();
+            const topic = (
+              e.currentTarget.querySelector(
+                "[data-topic]"
+              ) as HTMLInputElement | null
+            )?.value;
+
+            if (!email || !message) {
+              toast.error("Email and message are required.");
+              return;
+            }
+
+            const fd = new FormData();
+            fd.set("email", email);
+            fd.set("message", message);
+            if (topic) fd.set("topic", topic);
+
+            try {
+              const resp = await fetch(
+                `${API_BASE.replace(/\/$/, "")}/support`,
+                { method: "POST", body: fd }
+              );
+              if (!resp.ok) throw new Error("Request failed");
+              (e.currentTarget as HTMLFormElement).reset();
+              toast.success("Message sent! We'll get back to you soon.");
+            } catch (err: any) {
+              toast.error(err?.message || "Failed to send. Please try again.");
+            }
           }}
         >
           <div className="space-y-2">
@@ -37,8 +72,7 @@ export default function SupportForm({ userEmail }: { userEmail: string }) {
             <Input
               id="supportEmail"
               type="email"
-              value={userEmail}
-              disabled
+              defaultValue={userEmail}
               className="h-12"
             />
           </div>
@@ -53,10 +87,23 @@ export default function SupportForm({ userEmail }: { userEmail: string }) {
                 <SelectValue placeholder="Select a topic" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="technical">Technical Issue</SelectItem>
-                <SelectItem value="billing">Billing Question</SelectItem>
-                <SelectItem value="feature">Feature Request</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                {/* data-topic reads the chosen value for the FormData (not shadcn native) */}
+                <SelectItem value="technical">
+                  <input hidden readOnly value="technical" data-topic />
+                  Technical Issue
+                </SelectItem>
+                <SelectItem value="billing">
+                  <input hidden readOnly value="billing" data-topic />
+                  Billing Question
+                </SelectItem>
+                <SelectItem value="feature">
+                  <input hidden readOnly value="feature" data-topic />
+                  Feature Request
+                </SelectItem>
+                <SelectItem value="other">
+                  <input hidden readOnly value="other" data-topic />
+                  Other
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -78,7 +125,6 @@ export default function SupportForm({ userEmail }: { userEmail: string }) {
 
         <div className="mt-8 text-center">
           <h3 className="font-semibold mb-2">Need immediate help?</h3>
-          {/* ✅ plain text instead of DialogDescription */}
           <p className="text-sm text-muted-foreground">
             Check our FAQs or visit the support center.
           </p>
