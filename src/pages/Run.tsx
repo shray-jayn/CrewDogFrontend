@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Copy } from "lucide-react";
 
 import { Topbar } from "@/components/layout/Topbar";
 import { Footer } from "@/components/layout/Footer";
@@ -12,16 +12,16 @@ import { useAuth } from "@/auth/AuthProvider";
 import { runSearch, mapN8nToResults } from "@/services/run";
 import type { NormalizedResults } from "@/services/run";
 
-// Account/quota summary for enabling the submit button
 import { fetchAccountSummary, consumeOneCredit } from "@/services/account";
 import { logHistory } from "@/services/history";
 
-// Your presentational components
 import CenteredForm from "@/components/run/CenteredForm";
 import SideForm from "@/components/run/SideForm";
 import LoadingCard from "@/components/run/LoadingCard";
 import ResultsCard from "@/components/run/ResultsCard";
 import QuotaBadge from "@/components/run/QuotaBadge";
+
+/* ---------------- helpers ---------------- */
 
 function isAdminUser(user: any) {
   const app = user?.app_metadata ?? {};
@@ -35,6 +35,101 @@ function isAdminUser(user: any) {
   );
 }
 
+// Extract a useful error message/code from common n8n/webhook shapes
+function extractN8nError(
+  raw: any
+): { message: string; code?: string; requestId?: string } | null {
+  if (typeof raw === "string") {
+    const msg = raw.trim();
+    return msg ? { message: msg } : null;
+  }
+  if (!raw || typeof raw !== "object") return null;
+
+  // 1) { output_error: "Missed location" } or object
+  if (raw.output_error) {
+    if (typeof raw.output_error === "string")
+      return { message: raw.output_error };
+    if (typeof raw.output_error === "object") {
+      const { message, code, requestId, request_id } = raw.output_error as any;
+      return {
+        message: message || "Unexpected error",
+        code,
+        requestId: requestId || request_id,
+      };
+    }
+  }
+
+  // 2) { error: "..." } or { error: { message, code, requestId } }
+  if (raw.error) {
+    if (typeof raw.error === "string") return { message: raw.error };
+    if (typeof raw.error === "object") {
+      const { message, code, requestId, request_id } = raw.error as any;
+      return {
+        message: message || "Unexpected error",
+        code,
+        requestId: requestId || request_id,
+      };
+    }
+  }
+
+  // 3) { success:false, message, code }
+  if (raw.success === false) {
+    const { message, code, requestId, request_id } = raw as any;
+    return {
+      message: message || "Request failed",
+      code,
+      requestId: requestId || request_id,
+    };
+  }
+
+  // 4) top-level message/detail
+  if (typeof raw.message === "string" && raw.message)
+    return { message: raw.message };
+  if (typeof (raw as any).detail === "string" && (raw as any).detail) {
+    return { message: (raw as any).detail };
+  }
+
+  // 5) nested { data: { error: ... } }
+  if (raw.data?.error) {
+    const e = raw.data.error;
+    if (typeof e === "string") return { message: e };
+    if (typeof e === "object") {
+      const { message, code, requestId, request_id } = e as any;
+      return {
+        message: message || "Unexpected error",
+        code,
+        requestId: requestId || request_id,
+      };
+    }
+  }
+
+  // 6) arrays with an error-ish first item
+  if (Array.isArray(raw) && raw.length) {
+    const first = raw[0];
+    const nested = extractN8nError(first);
+    if (nested) return nested;
+  }
+
+  return null;
+}
+
+// A tiny wrapper that enforces a timeout (page-level)
+async function runSearchWithTimeout(
+  args: { JD: string; JD_link: string; includeLeads: boolean },
+  ms = 60000
+) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  try {
+    const raw = await runSearch(args as any);
+    return raw;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+/* ---------------- component ---------------- */
+
 export default function RunPage() {
   const { user } = useAuth();
 
@@ -45,7 +140,12 @@ export default function RunPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<NormalizedResults | null>(null);
 
-  // derive plan/quota for enabling the submit button
+  const [err, setErr] = useState<{
+    message: string;
+    code?: string;
+    requestId?: string;
+  } | null>(null);
+
   const [cap, setCap] = useState<number>(3);
   const [used, setUsed] = useState<number>(0);
   const [unlimited, setUnlimited] = useState<boolean>(false);
@@ -75,20 +175,31 @@ export default function RunPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErr(null);
 
     if (!user) {
       toast({
-        title: "Authentication Required",
+        title: "Authentication required",
         description: "Please log in to run a search.",
         variant: "destructive",
       });
       return;
     }
 
-    if (!jobUrl && !jobDescription) {
+    // Mutual exclusion
+    if (jobUrl.trim() && jobDescription.trim()) {
       toast({
-        title: "Input Required",
-        description: "Provide a job URL or paste the description.",
+        title: "Choose one input",
+        description: "Provide either a Job URL or a Job Description, not both.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!jobUrl.trim() && !jobDescription.trim()) {
+      toast({
+        title: "Input required",
+        description: "Provide a Job URL or paste the description.",
         variant: "destructive",
       });
       return;
@@ -96,34 +207,66 @@ export default function RunPage() {
 
     if (!canSearch) {
       toast({
-        title: "Quota Reached",
+        title: "Quota reached",
         description: "You’ve hit your current plan limit.",
         variant: "destructive",
       });
       return;
     }
 
-    // ✅ GA4: submit (matches legacy)
+    // Analytics
     (window as any).dataLayer = (window as any).dataLayer || [];
     (window as any).dataLayer.push({
       event: "run_search",
       with_leads: includeLeads,
     });
 
-    toast({ title: "Search Started", description: "Analyzing job posting…" });
+    toast({ title: "Search started", description: "Analyzing job posting…" });
 
     setIsLoading(true);
     try {
-      const raw = await runSearch({
-        JD: jobDescription || "",
-        JD_link: jobUrl || "",
-        includeLeads,
-      });
+      const raw = await runSearchWithTimeout(
+        { JD: jobDescription || "", JD_link: jobUrl || "", includeLeads },
+        60000
+      );
 
-      const normalized = mapN8nToResults(raw);
+      if (raw == null) {
+        throw new Error("Empty response from server");
+      }
+
+      // Detect n8n errors
+      const maybeErr = extractN8nError(raw);
+      if (maybeErr) {
+        // friendly hint for common upstream failure
+        if (/missed location/i.test(maybeErr.message)) {
+          maybeErr.message =
+            "We couldn’t detect the job location. Please include the city/region in the job description or paste the original job link.";
+        }
+        setErr(maybeErr);
+        throw new Error(maybeErr.message);
+      }
+
+      // Map → normalized
+      let normalized: NormalizedResults;
+      try {
+        normalized = mapN8nToResults(raw);
+      } catch (mapErr: any) {
+        setErr({
+          message:
+            mapErr?.message ||
+            "We received an unexpected payload from the search engine.",
+        });
+        throw mapErr;
+      }
+
+      if (!normalized || typeof normalized !== "object") {
+        setErr({ message: "No results returned from the search." });
+        throw new Error("No results");
+      }
+
       setResults(normalized);
 
-      // Fire-and-forget: consume credit + log history (full parity with old UI)
+      // Fire-and-forget: consume credit + log history
       void Promise.allSettled([
         consumeOneCredit(user?.id),
         logHistory({
@@ -135,41 +278,38 @@ export default function RunPage() {
         }),
       ]);
 
-      // ✅ GA4: success (matches legacy)
+      // Analytics
       (window as any).dataLayer.push({
         event: "run_search_success",
         with_leads: includeLeads,
       });
 
-      // Notify other tabs to refresh quota
       try {
         const bc = new BroadcastChannel("gc-activity");
         bc.postMessage({ type: "search_used", ts: Date.now() });
         (bc as any).close?.();
       } catch {}
 
-      // Optional legacy notifier
       (window as any).__notify?.("Search complete.", "success");
-
       toast({
-        title: "Search Complete ✨",
+        title: "Search complete ✨",
         description: "Found company & contacts.",
       });
-    } catch (err: any) {
-      // ✅ GA4: error (matches legacy)
+    } catch (error: any) {
       (window as any).dataLayer.push({
         event: "run_search_error",
-        message: err?.message || String(err),
+        message: error?.message || String(error),
       });
-
       (window as any).__notify?.(
         "Something went wrong. Please try again.",
         "error"
       );
-
       toast({
         title: "Search failed",
-        description: err?.message || "Unexpected error",
+        description:
+          err?.message ||
+          error?.message ||
+          "Unexpected error. Please retry or try a different input.",
         variant: "destructive",
       });
     } finally {
@@ -177,7 +317,7 @@ export default function RunPage() {
     }
   }
 
-  const hasSearched = !!results || isLoading;
+  const hasSearched = !!results || isLoading || !!err;
 
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
@@ -199,6 +339,20 @@ export default function RunPage() {
             Back
           </Link>
 
+          {/* Explainer — location requirement when using pasted text */}
+          {/* <div className="mb-6 rounded-lg border bg-muted/40 p-4 text-sm">
+            <strong>Before you run a search:</strong>
+            <ul className="list-disc pl-5 mt-1 space-y-1">
+              <li>
+                If you paste the job text (instead of a link), please include
+                the <b>job location</b> (city & country/state).
+              </li>
+              <li>
+                Paste either the <b>link</b> or the <b>text</b> — not both.
+              </li>
+            </ul>
+          </div> */}
+
           <AnimatePresence mode="wait">
             {!hasSearched ? (
               <motion.div
@@ -211,9 +365,19 @@ export default function RunPage() {
                 <div className="w-full max-w-2xl">
                   <CenteredForm
                     jobUrl={jobUrl}
-                    setJobUrl={setJobUrl}
+                    setJobUrl={(v) => {
+                      setErr(null);
+                      setResults(null);
+                      setJobUrl(v);
+                      if (v) setJobDescription("");
+                    }}
                     jobDescription={jobDescription}
-                    setJobDescription={setJobDescription}
+                    setJobDescription={(v) => {
+                      setErr(null);
+                      setResults(null);
+                      setJobDescription(v);
+                      if (v) setJobUrl("");
+                    }}
                     includeLeads={includeLeads}
                     setIncludeLeads={setIncludeLeads}
                     isLoading={isLoading}
@@ -237,9 +401,19 @@ export default function RunPage() {
                 >
                   <SideForm
                     jobUrl={jobUrl}
-                    setJobUrl={setJobUrl}
+                    setJobUrl={(v) => {
+                      setErr(null);
+                      setResults(null);
+                      setJobUrl(v);
+                      if (v) setJobDescription("");
+                    }}
                     jobDescription={jobDescription}
-                    setJobDescription={setJobDescription}
+                    setJobDescription={(v) => {
+                      setErr(null);
+                      setResults(null);
+                      setJobDescription(v);
+                      if (v) setJobUrl("");
+                    }}
                     includeLeads={includeLeads}
                     setIncludeLeads={setIncludeLeads}
                     isLoading={isLoading}
@@ -248,7 +422,7 @@ export default function RunPage() {
                   />
                 </motion.div>
 
-                {/* Right: results or loader */}
+                {/* Right: results / loader / error */}
                 <motion.div
                   className="lg:col-span-2"
                   initial={{ opacity: 0, x: 20 }}
@@ -265,14 +439,84 @@ export default function RunPage() {
                         <LoadingCard />
                       </motion.div>
                     )}
-                    {results && !isLoading && (
+
+                    {!isLoading && err && (
+                      <motion.div
+                        key="error"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="glass-card p-6 border-red-500/20 bg-red-500/5 rounded-xl"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5">
+                            <AlertTriangle className="h-5 w-5 text-red-500" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold">
+                              We couldn’t complete the search
+                            </h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {err.message}
+                            </p>
+                            {(err.code || err.requestId) && (
+                              <div className="mt-3 text-xs text-muted-foreground/90 flex items-center gap-3">
+                                {err.code && (
+                                  <span>
+                                    Code: <code>{err.code}</code>
+                                  </span>
+                                )}
+                                {err.requestId && (
+                                  <span className="inline-flex items-center gap-1">
+                                    Req: <code>{err.requestId}</code>
+                                    <button
+                                      type="button"
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 border rounded-md hover:bg-accent/30"
+                                      onClick={() =>
+                                        navigator.clipboard.writeText(
+                                          err.requestId!
+                                        )
+                                      }
+                                      aria-label="Copy request id"
+                                    >
+                                      <Copy className="h-3.5 w-3.5" /> Copy
+                                    </button>
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                className="btn btn-sm border px-3 py-1.5 rounded-md"
+                                onClick={(ev) => handleSubmit(ev as any)}
+                              >
+                                Try Again
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm border px-3 py-1.5 rounded-md"
+                                onClick={() => {
+                                  setErr(null);
+                                  setResults(null);
+                                }}
+                              >
+                                Reset
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {!isLoading && results && !err && (
                       <motion.div
                         key="results"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                       >
-                        <ResultsCard results={results} />
+                        <ResultsCard results={results as any} />
                       </motion.div>
                     )}
                   </AnimatePresence>

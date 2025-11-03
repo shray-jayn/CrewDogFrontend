@@ -1,4 +1,3 @@
-// src/components/run/RunForm.tsx
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +25,7 @@ export default function RunForm({
   compact?: boolean;
 }) {
   const { jobUrl, jobDescription, includeLeads } = values;
+  const jdLen = jobDescription?.length ?? 0;
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -110,39 +110,18 @@ export default function RunForm({
                 <div className="flex-1 h-2 bg-muted/50 rounded-full overflow-hidden backdrop-blur-sm">
                   <div
                     className="h-full bg-gradient-to-r from-primary via-primary to-accent transition-all duration-500 rounded-full"
-                    style={{
-                      width: `${Math.min(
-                        (jobDescription.length / 300) * 100,
-                        100
-                      )}%`,
-                    }}
+                    style={{ width: `${Math.min((jdLen / 300) * 100, 100)}%` }}
                   />
                 </div>
                 <span className="text-xs font-semibold text-muted-foreground min-w-[90px] text-right tabular-nums">
-                  {jobDescription.length} / 300
+                  {jdLen} / 300
                 </span>
               </div>
-              {!compact && (
-                <div className="flex items-center gap-2 text-xs">
-                  <div
-                    className={`w-2 h-2 rounded-full transition-colors ${
-                      jobDescription.length >= 300
-                        ? "bg-green-500"
-                        : "bg-amber-500"
-                    }`}
-                  />
-                  <span className="text-muted-foreground">
-                    {jobDescription.length >= 300
-                      ? "Minimum requirement met"
-                      : `${300 - jobDescription.length} more characters needed`}
-                  </span>
-                </div>
-              )}
             </div>
           )}
           {!compact && (
             <p className="mt-2 text-xs text-muted-foreground/70">
-              💡 Tip: Include location information for accurate results
+              ⚠️ Location is mandatory for best results.
             </p>
           )}
         </div>
@@ -196,14 +175,9 @@ export default function RunForm({
               <p
                 className={`font-semibold ${
                   compact ? "text-xs" : "text-base"
-                } mb-0.5 flex items-center gap-2`}
+                } mb-0.5`}
               >
                 Include Potential Leads Search
-                {!compact && (
-                  <span className="px-2 py-0.5 text-xs font-bold bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-full">
-                    Pro
-                  </span>
-                )}
               </p>
               <p className="text-xs text-muted-foreground">
                 Find additional decision-makers

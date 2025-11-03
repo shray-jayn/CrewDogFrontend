@@ -28,6 +28,8 @@ export default function CenteredForm({
   canSearch,
   onSubmit,
 }: Props) {
+  const jdLen = jobDescription?.length ?? 0;
+
   return (
     <Card className="glass-card p-12 border-primary/10 shadow-2xl backdrop-blur-xl">
       <div className="mb-8 text-center">
@@ -79,7 +81,7 @@ export default function CenteredForm({
               Job Description
             </label>
             <Textarea
-              placeholder="Paste the complete job description here…"
+              placeholder="Paste the complete job description here (include location)…"
               value={jobDescription}
               onChange={(e) => {
                 setJobDescription(e.target.value);
@@ -95,21 +97,18 @@ export default function CenteredForm({
                     <div
                       className="h-full bg-gradient-to-r from-primary via-primary to-accent transition-all duration-500 rounded-full"
                       style={{
-                        width: `${Math.min(
-                          (jobDescription.length / 300) * 100,
-                          100
-                        )}%`,
+                        width: `${Math.min((jdLen / 300) * 100, 100)}%`,
                       }}
                     />
                   </div>
                   <span className="text-xs font-semibold text-muted-foreground min-w-[90px] text-right tabular-nums">
-                    {jobDescription.length} / 300
+                    {jdLen} / 300
                   </span>
                 </div>
               </div>
             )}
             <p className="mt-2 text-xs text-muted-foreground/70">
-              💡 Tip: include location for best results (not required)
+              ⚠️ Location is mandatory for best results.
             </p>
           </div>
         </div>
@@ -130,11 +129,8 @@ export default function CenteredForm({
                 <div className="absolute left-1 top-1 w-5 h-5 bg-background rounded-full transition-all duration-300 peer-checked:translate-x-7 shadow-lg" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-base mb-0.5 flex items-center gap-2">
+                <p className="font-semibold text-base mb-0.5">
                   Include Potential Leads Search
-                  <span className="px-2 py-0.5 text-xs font-bold bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-full">
-                    Pro
-                  </span>
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Discover additional decision-makers and influencers

@@ -28,6 +28,8 @@ export default function SideForm({
   canSearch,
   onSubmit,
 }: Props) {
+  const jdLen = jobDescription?.length ?? 0;
+
   return (
     <Card className="glass-card p-6 h-full">
       <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
@@ -58,7 +60,7 @@ export default function SideForm({
           </div>
 
           <Textarea
-            placeholder="📝 Job description..."
+            placeholder="📝 Job description (include location)…"
             value={jobDescription}
             onChange={(e) => {
               setJobDescription(e.target.value);
@@ -72,19 +74,17 @@ export default function SideForm({
               <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-primary to-accent transition-all"
-                  style={{
-                    width: `${Math.min(
-                      (jobDescription.length / 300) * 100,
-                      100
-                    )}%`,
-                  }}
+                  style={{ width: `${Math.min((jdLen / 300) * 100, 100)}%` }}
                 />
               </div>
               <span className="text-xs text-muted-foreground min-w-[60px] text-right">
-                {jobDescription.length}/300
+                {jdLen}/300
               </span>
             </div>
           )}
+          <p className="text-xs text-muted-foreground/70">
+            ⚠️ Location is mandatory for best results.
+          </p>
         </div>
 
         <div className="p-3 rounded-lg bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/10">
@@ -101,8 +101,10 @@ export default function SideForm({
               <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-background rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
             </div>
             <div className="flex-1">
-              <p className="font-medium text-xs">Include Leads</p>
-              <p className="text-xs text-muted-foreground">Extra contacts</p>
+              <p className="font-medium text-xs">Include Potential Leads</p>
+              <p className="text-xs text-muted-foreground">
+                Find additional decision-makers
+              </p>
             </div>
           </label>
         </div>

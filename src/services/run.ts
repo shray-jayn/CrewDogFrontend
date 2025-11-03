@@ -21,6 +21,15 @@ export type RunResponse = {
   sniff_out_clues?: string;
   hr?: Array<{ title: string; link: string }>;
 
+  // NEW: lead arrays we actually get back from n8n
+  potential_leads?: Array<{
+    title?: string;
+    name?: string;
+    link?: string;
+    url?: string;
+  }>;
+  leads?: Array<{ title?: string; name?: string; link?: string; url?: string }>;
+
   // allow unknown keys so we don't break on additions
   [k: string]: any;
 };
@@ -103,6 +112,31 @@ export function nameAndRoleFromTitle(title: string) {
   return { name: name || "Unknown", role };
 }
 
+// NEW: normalize potential leads from n8n payload
+function toLeads(raw: any): Array<{ name: string; url: string }> {
+  const arr =
+    raw?.potential_leads ??
+    raw?.leads ??
+    raw?.data?.potential_leads ??
+    raw?.data?.leads ??
+    [];
+
+  if (!Array.isArray(arr)) return [];
+  const out = arr
+    .map((x) => {
+      if (!x || typeof x !== "object") return null;
+      const name = (x.title ?? x.name ?? "").toString().trim();
+      const url = (x.link ?? x.url ?? "").toString().trim();
+      if (!name || !url) return null;
+      return { name, url };
+    })
+    .filter(Boolean) as Array<{ name: string; url: string }>;
+
+  // de-dupe by URL
+  const seen = new Set<string>();
+  return out.filter((l) => (seen.has(l.url) ? false : (seen.add(l.url), true)));
+}
+
 /** Map n8n’s payload into a UI-friendly shape */
 export function mapN8nToResults(data: any) {
   const website = data.website || data.company_website || "";
@@ -127,6 +161,8 @@ export function mapN8nToResults(data: any) {
     careerPage: data.careerPage || "",
     contacts: contactsFromHr || contactsFromContacts || [],
     sniff_out_clues: data.sniff_out_clues || undefined,
+    // NEW
+    leads: toLeads(data),
   };
 }
 

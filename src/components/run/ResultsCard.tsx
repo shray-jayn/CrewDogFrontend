@@ -1,6 +1,13 @@
 // src/components/run/ResultsCard.tsx
 import { Card } from "@/components/ui/card";
-import { Building2, Globe, Briefcase, Users2, Info } from "lucide-react";
+import {
+  Building2,
+  Globe,
+  Briefcase,
+  Users2,
+  Info,
+  UserSearch,
+} from "lucide-react";
 
 export type Results = {
   company: string;
@@ -8,6 +15,8 @@ export type Results = {
   careerPage?: string;
   contacts?: Array<{ name: string; role?: string; linkedIn?: string }>;
   sniff_out_clues?: string;
+  // NEW
+  leads?: Array<{ name: string; url: string }>;
 };
 
 export default function ResultsCard({ results }: { results: Results }) {
@@ -29,7 +38,7 @@ export default function ResultsCard({ results }: { results: Results }) {
           </div>
         </div>
 
-        {/* Insights: Why this company */}
+        {/* Insights */}
         {results.sniff_out_clues && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -121,6 +130,30 @@ export default function ResultsCard({ results }: { results: Results }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* NEW: Potential Leads */}
+        {Array.isArray(results.leads) && results.leads.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <UserSearch className="h-4 w-4 text-primary" />
+              <h4 className="font-semibold text-sm">Potential Leads</h4>
+            </div>
+            <ul className="space-y-2">
+              {results.leads.map((p, i) => (
+                <li key={`${p.url}-${i}`} className="text-sm">
+                  <a
+                    className="underline"
+                    href={p.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {p.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
