@@ -28,6 +28,25 @@ function normalizeBase(u: string) {
   return u.endsWith("/") ? u.slice(0, -1) : u;
 }
 
+// In prod, prefer https (warn if someone sets http for a public host)
+function ensureHttpsInProd(url: string) {
+  try {
+    if (!url) return url;
+    const u = new URL(url);
+    // localhost is fine in dev; anything else should be https
+    if (!isLocalHost && u.hostname !== "localhost" && u.protocol !== "https:") {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[config] For production, VITE_API_BASE should use HTTPS:",
+        url
+      );
+    }
+  } catch {
+    // ignore parse errors; other guards will catch missing base
+  }
+  return url;
+}
+
 /**
  * Resolution order:
  * 1) env.VITE_API_BASE (always wins in prod; set this on Render)
@@ -50,14 +69,44 @@ if (!resolvedApiBase && isBrowser && !isLocalHost) {
   );
 }
 
-export const API_BASE = normalizeBase(resolvedApiBase);
+export const API_BASE = ensureHttpsInProd(normalizeBase(resolvedApiBase));
 
-// Stripe is fine as-is
+// Stripe
 export const STRIPE_PUBLISHABLE_KEY = env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+// Prod guardrails: flag obvious misconfig early (console only)
+const IS_PROD_LIKE = isBrowser && !isLocalHost;
+
+// Wrong publishable key in prod (should be pk_live_)
+if (
+  IS_PROD_LIKE &&
+  STRIPE_PUBLISHABLE_KEY &&
+  !STRIPE_PUBLISHABLE_KEY.startsWith("pk_live_")
+) {
+  // eslint-disable-next-line no-console
+  console.error(
+    "[stripe] Production build must use a pk_live_ publishable key."
+  );
+}
+
+// Missing API base in prod
+if (IS_PROD_LIKE && !API_BASE) {
+  // eslint-disable-next-line no-console
+  console.error("[config] Missing VITE_API_BASE in production.");
+}
 
 /** Helper to build URLs without duplicate slashes */
 export function apiUrl(path: string) {
   const base = API_BASE || "";
   const p = path.startsWith("/") ? path : `/${path}`;
   return `${base}${p}`;
+}
+
+/** Nice-to-have: surface when the app is likely running in test mode */
+export function isLikelyTestMode() {
+  return (
+    STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_") ||
+    API_BASE?.includes("localhost") ||
+    API_BASE?.includes("staging")
+  );
 }

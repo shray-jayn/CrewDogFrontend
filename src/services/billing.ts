@@ -1,104 +1,134 @@
+// src/services/billing.ts
 import { API_BASE, STRIPE_PUBLISHABLE_KEY } from "@/lib/config";
 import { getIdentity } from "@/lib/supabase";
+import { loadStripe } from "@stripe/stripe-js";
 
-const base = API_BASE.replace(/\/$/, "");
+if (!API_BASE) {
+  // Surface a loud error early (prod will log this in console)
+  // eslint-disable-next-line no-console
+  console.error("[billing] API_BASE is not set; requests will fail.");
+}
+
+const base = (API_BASE || "").replace(/\/$/, "");
+
+// Centralized fetch with JSON + error handling
+async function postJSON<T = any>(url: string, body: unknown): Promise<T> {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body ?? {}),
+  });
+  const text = await r.text();
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    // non-JSON (ignore)
+  }
+  if (!r.ok) {
+    const msg = data?.error || data?.message || `HTTP ${r.status}`;
+    throw new Error(msg);
+  }
+  return data as T;
+}
+
+let stripePromise: Promise<import("@stripe/stripe-js").Stripe | null> | null =
+  null;
+function getStripe() {
+  if (!stripePromise) stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
+  return stripePromise;
+}
 
 export async function startCheckout() {
   const { userId, email } = await getIdentity();
   if (!userId || !email) throw new Error("Sign in first.");
-  const r = await fetch(`${base}/stripe/create-checkout-session`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ userId, email }),
-  });
-  if (!r.ok) throw new Error("Checkout failed");
-  const { url } = await r.json();
-  if (!url) throw new Error("No checkout URL");
-  window.location.href = url;
+
+  const data = await postJSON<{ url: string }>(
+    `${base}/stripe/create-checkout-session`,
+    { userId, email }
+  );
+
+  if (!data?.url) throw new Error("No checkout URL received.");
+  window.location.href = data.url;
 }
 
 export async function openBillingPortal() {
   const { userId, email } = await getIdentity();
   if (!userId || !email) throw new Error("Sign in first.");
-  const r = await fetch(`${base}/stripe/portal`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ userId, email }),
+
+  const data = await postJSON<{ url: string }>(`${base}/stripe/portal`, {
+    userId,
+    email,
   });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok || !data?.url)
-    throw new Error(data?.error || "Could not open billing portal");
+
+  if (!data?.url) throw new Error("Could not open billing portal.");
   window.location.href = data.url;
 }
 
 export async function renewNow() {
   const { userId } = await getIdentity();
   if (!userId) throw new Error("Sign in first.");
-  const r = await fetch(`${base}/stripe/renew-now`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ userId }),
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data?.error || "Could not renew now");
-  return data; // may include client_secret for 3DS
+
+  // May include client_secret when SCA is required
+  return postJSON<{
+    ok: boolean;
+    subscription_status?: string;
+    invoice_status?: string | null;
+    payment_intent_status?: string | null;
+    client_secret?: string | null;
+  }>(`${base}/stripe/renew-now`, { userId });
 }
 
 export async function cancelSubscription() {
   const { userId } = await getIdentity();
   if (!userId) throw new Error("Sign in first.");
-  const r = await fetch(`${base}/stripe/cancel`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ userId }),
-  });
-  if (r.status === 404) throw new Error("No active subscription to cancel.");
-  if (r.status === 409) throw new Error("Cancellation already scheduled.");
-  if (!r.ok) {
-    const { error } = await r.json().catch(() => ({}));
-    throw new Error(error || "Cancel failed");
+
+  try {
+    await postJSON(`${base}/stripe/cancel`, { userId });
+  } catch (e: any) {
+    const msg = String(e?.message || "");
+    if (/404/.test(msg) || /No active subscription/i.test(msg)) {
+      throw new Error("No active subscription to cancel.");
+    }
+    if (/409/.test(msg) || /already scheduled/i.test(msg)) {
+      throw new Error("Cancellation already scheduled.");
+    }
+    throw new Error(msg || "Cancel failed");
   }
 }
 
 export async function sendCancelFeedback(reason?: string, otherText?: string) {
   const { userId } = await getIdentity();
   if (!userId) throw new Error("Sign in first.");
-  await fetch(`${base}/stripe/cancel/feedback`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ userId, reason, otherText }),
+
+  await postJSON(`${base}/stripe/cancel/feedback`, {
+    userId,
+    reason,
+    otherText,
   });
 }
 
 export async function downgradeToTwoPounds() {
   const { userId } = await getIdentity();
   if (!userId) throw new Error("Sign in first.");
-  const r = await fetch(`${base}/stripe/downgrade`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ userId }),
-  });
-  if (!r.ok) {
-    const { error } = await r.json().catch(() => ({}));
-    throw new Error(error || "Could not switch to £2 plan");
-  }
+
+  await postJSON(`${base}/stripe/downgrade`, { userId });
 }
 
-// Optional helper for 3DS
+// 3DS / SCA helper
 export async function confirmIfRequired(client_secret?: string) {
   if (!client_secret) return;
-  const stripe = (window as any).Stripe?.(STRIPE_PUBLISHABLE_KEY);
-  if (!stripe) throw new Error("Stripe.js not loaded");
+
+  const stripe = await getStripe();
+  if (!stripe) throw new Error("Stripe.js failed to load");
+
   const { error, paymentIntent } = await stripe.confirmCardPayment(
     client_secret
   );
+
   if (error) throw error;
-  if (paymentIntent?.status !== "succeeded")
+  if (paymentIntent?.status !== "succeeded") {
     throw new Error("Payment not completed.");
+  }
 }
