@@ -1,4 +1,3 @@
-// src/pages/Run.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,11 +14,12 @@ import type { NormalizedResults } from "@/services/run";
 import { fetchAccountSummary, consumeOneCredit } from "@/services/account";
 import { logHistory } from "@/services/history";
 
+import QuotaBadge from "@/components/run/QuotaBadge";
+
 import CenteredForm from "@/components/run/CenteredForm";
 import SideForm from "@/components/run/SideForm";
 import LoadingCard from "@/components/run/LoadingCard";
 import ResultsCard from "@/components/run/ResultsCard";
-import QuotaBadge from "@/components/run/QuotaBadge";
 
 /* ---------------- helpers ---------------- */
 
@@ -35,7 +35,6 @@ function isAdminUser(user: any) {
   );
 }
 
-// Extract a useful error message/code from common n8n/webhook shapes
 function extractN8nError(
   raw: any
 ): { message: string; code?: string; requestId?: string } | null {
@@ -45,7 +44,6 @@ function extractN8nError(
   }
   if (!raw || typeof raw !== "object") return null;
 
-  // 1) { output_error: "Missed location" } or object
   if (raw.output_error) {
     if (typeof raw.output_error === "string")
       return { message: raw.output_error };
@@ -58,8 +56,6 @@ function extractN8nError(
       };
     }
   }
-
-  // 2) { error: "..." } or { error: { message, code, requestId } }
   if (raw.error) {
     if (typeof raw.error === "string") return { message: raw.error };
     if (typeof raw.error === "object") {
@@ -71,8 +67,6 @@ function extractN8nError(
       };
     }
   }
-
-  // 3) { success:false, message, code }
   if (raw.success === false) {
     const { message, code, requestId, request_id } = raw as any;
     return {
@@ -81,15 +75,10 @@ function extractN8nError(
       requestId: requestId || request_id,
     };
   }
-
-  // 4) top-level message/detail
   if (typeof raw.message === "string" && raw.message)
     return { message: raw.message };
-  if (typeof (raw as any).detail === "string" && (raw as any).detail) {
+  if (typeof (raw as any).detail === "string" && (raw as any).detail)
     return { message: (raw as any).detail };
-  }
-
-  // 5) nested { data: { error: ... } }
   if (raw.data?.error) {
     const e = raw.data.error;
     if (typeof e === "string") return { message: e };
@@ -102,18 +91,14 @@ function extractN8nError(
       };
     }
   }
-
-  // 6) arrays with an error-ish first item
   if (Array.isArray(raw) && raw.length) {
     const first = raw[0];
     const nested = extractN8nError(first);
     if (nested) return nested;
   }
-
   return null;
 }
 
-// A tiny wrapper that enforces a timeout (page-level)
 async function runSearchWithTimeout(
   args: { JD: string; JD_link: string; includeLeads: boolean },
   ms = 60000
@@ -139,7 +124,6 @@ export default function RunPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<NormalizedResults | null>(null);
-
   const [err, setErr] = useState<{
     message: string;
     code?: string;
@@ -150,6 +134,14 @@ export default function RunPage() {
   const [used, setUsed] = useState<number>(0);
   const [unlimited, setUnlimited] = useState<boolean>(false);
 
+  async function syncQuotaFromServer() {
+    const s = await fetchAccountSummary();
+    setCap(s.cap ?? 3);
+    setUsed(s.used ?? 0);
+    setUnlimited(!!s.unlimited || isAdminUser(user));
+    return s;
+  }
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -159,19 +151,17 @@ export default function RunPage() {
         setCap(s.cap ?? 3);
         setUsed(s.used ?? 0);
         setUnlimited(!!s.unlimited || isAdminUser(user));
-      } catch {
-        // ignore; keep defaults
-      }
+      } catch {}
     })();
     return () => {
       mounted = false;
     };
   }, [user]);
 
-  const canSearch = useMemo(() => {
-    if (unlimited) return true;
-    return used < cap;
-  }, [unlimited, used, cap]);
+  const canSearch = useMemo(
+    () => (unlimited ? true : used < cap),
+    [unlimited, used, cap]
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -186,7 +176,6 @@ export default function RunPage() {
       return;
     }
 
-    // Mutual exclusion
     if (jobUrl.trim() && jobDescription.trim()) {
       toast({
         title: "Choose one input",
@@ -195,7 +184,6 @@ export default function RunPage() {
       });
       return;
     }
-
     if (!jobUrl.trim() && !jobDescription.trim()) {
       toast({
         title: "Input required",
@@ -205,16 +193,28 @@ export default function RunPage() {
       return;
     }
 
-    if (!canSearch) {
+    // fresh gate
+    const sNow = await fetchAccountSummary();
+    const isUnlimitedNow = !!sNow.unlimited || isAdminUser(user);
+    const capNow = sNow.cap ?? 3;
+    const usedNow = sNow.used ?? 0;
+
+    if (!isUnlimitedNow && usedNow >= capNow) {
       toast({
         title: "Quota reached",
         description: "You’ve hit your current plan limit.",
         variant: "destructive",
       });
+      setCap(capNow);
+      setUsed(usedNow);
+      setUnlimited(isUnlimitedNow);
       return;
     }
 
-    // Analytics
+    setCap(capNow);
+    setUsed(usedNow);
+    setUnlimited(isUnlimitedNow);
+
     (window as any).dataLayer = (window as any).dataLayer || [];
     (window as any).dataLayer.push({
       event: "run_search",
@@ -223,30 +223,28 @@ export default function RunPage() {
 
     toast({ title: "Search started", description: "Analyzing job posting…" });
 
+    if (!isUnlimitedNow) {
+      setUsed((u) => Math.min(capNow, u + 1));
+    }
+
     setIsLoading(true);
     try {
       const raw = await runSearchWithTimeout(
         { JD: jobDescription || "", JD_link: jobUrl || "", includeLeads },
         60000
       );
+      if (raw == null) throw new Error("Empty response from server");
 
-      if (raw == null) {
-        throw new Error("Empty response from server");
-      }
-
-      // Detect n8n errors
       const maybeErr = extractN8nError(raw);
       if (maybeErr) {
-        // friendly hint for common upstream failure
         if (/missed location/i.test(maybeErr.message)) {
           maybeErr.message =
-            "We couldn’t detect the job location. Please include the city/region in the job description or paste the original job link.";
+            "We couldn’t detect the job location. Please include the city/region and try again.";
         }
         setErr(maybeErr);
         throw new Error(maybeErr.message);
       }
 
-      // Map → normalized
       let normalized: NormalizedResults;
       try {
         normalized = mapN8nToResults(raw);
@@ -266,27 +264,29 @@ export default function RunPage() {
 
       setResults(normalized);
 
-      // Fire-and-forget: consume credit + log history
-      void Promise.allSettled([
-        consumeOneCredit(user?.id),
-        logHistory({
-          userId: user?.id,
-          summary: normalized,
-          jobUrl,
-          jobDescription,
-          includeLeads,
-        }),
-      ]);
+      // consume then history
+      await consumeOneCredit(user?.id);
 
-      // Analytics
+      void logHistory({
+        userId: user?.id,
+        summary: normalized,
+        jobUrl,
+        jobDescription,
+        includeLeads,
+      });
+
       (window as any).dataLayer.push({
         event: "run_search_success",
         with_leads: includeLeads,
       });
 
+      // settle -> sync -> broadcast
+      await new Promise((r) => setTimeout(r, 350));
+      const synced = await syncQuotaFromServer();
+
       try {
         const bc = new BroadcastChannel("gc-activity");
-        bc.postMessage({ type: "search_used", ts: Date.now() });
+        bc.postMessage({ type: "quota_changed", ts: Date.now(), synced });
         (bc as any).close?.();
       } catch {}
 
@@ -296,10 +296,20 @@ export default function RunPage() {
         description: "Found company & contacts.",
       });
     } catch (error: any) {
+      // revert optimistic if needed by syncing
+      const synced = await syncQuotaFromServer();
+
+      try {
+        const bc = new BroadcastChannel("gc-activity");
+        bc.postMessage({ type: "quota_changed", ts: Date.now(), synced });
+        (bc as any).close?.();
+      } catch {}
+
       (window as any).dataLayer.push({
         event: "run_search_error",
         message: error?.message || String(error),
       });
+
       (window as any).__notify?.(
         "Something went wrong. Please try again.",
         "error"
@@ -338,20 +348,6 @@ export default function RunPage() {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Link>
-
-          {/* Explainer — location requirement when using pasted text */}
-          {/* <div className="mb-6 rounded-lg border bg-muted/40 p-4 text-sm">
-            <strong>Before you run a search:</strong>
-            <ul className="list-disc pl-5 mt-1 space-y-1">
-              <li>
-                If you paste the job text (instead of a link), please include
-                the <b>job location</b> (city & country/state).
-              </li>
-              <li>
-                Paste either the <b>link</b> or the <b>text</b> — not both.
-              </li>
-            </ul>
-          </div> */}
 
           <AnimatePresence mode="wait">
             {!hasSearched ? (

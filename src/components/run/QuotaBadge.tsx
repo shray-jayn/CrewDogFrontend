@@ -1,8 +1,7 @@
-// src/features/run/QuotaBadge.tsx
 import { useAuth } from "@/auth/AuthProvider";
 import { Crown, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchAccountSummary } from "@/services/account";
 
 type Plan = "Admin" | "Pro" | "Free";
@@ -37,40 +36,65 @@ export default function QuotaBadge() {
   const [isAdminServer, setIsAdminServer] = useState<boolean>(false);
   const [loaded, setLoaded] = useState<boolean>(false);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const s = await fetchAccountSummary(); // NormalizedSummary
-        if (!mounted) return;
-        setUsedServer(Number(s.used ?? 0));
-        setCapServer(typeof s.cap === "number" ? Number(s.cap) : null);
-        setUnlimitedServer(Boolean(s.unlimited));
-        setIsAdminServer(Boolean(s.isAdmin)); // ✅ use normalized flag
-      } catch {
-        // non-blocking
-      } finally {
-        if (mounted) setLoaded(true);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
+  const bcRef = useRef<BroadcastChannel | null>(null);
+  const refreshTimer = useRef<number | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const s = await fetchAccountSummary();
+      setUsedServer(Number(s.used ?? 0));
+      setCapServer(typeof s.cap === "number" ? Number(s.cap) : null);
+      setUnlimitedServer(Boolean(s.unlimited));
+      setIsAdminServer(Boolean((s as any).isAdmin));
+    } finally {
+      setLoaded(true);
+    }
   }, []);
 
-  // Admin detection (instant from user meta; also from server once loaded)
+  useEffect(() => {
+    refresh();
+    refreshTimer.current = window.setTimeout(refresh, 1200);
+    return () => {
+      if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
+    };
+  }, [refresh]);
+
+  useEffect(() => {
+    try {
+      const bc = new BroadcastChannel("gc-activity");
+      bcRef.current = bc;
+      bc.addEventListener("message", (e) => {
+        if (
+          e?.data?.type === "quota_changed" ||
+          e?.data?.type === "search_used"
+        ) {
+          setTimeout(refresh, 350);
+        }
+      });
+      return () => {
+        try {
+          bc.close();
+        } catch {}
+        bcRef.current = null;
+      };
+    } catch {}
+  }, [refresh]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [refresh]);
+
   const isAdmin = useMemo(
     () => isAdminFromUser(user) || isAdminServer,
     [user, isAdminServer]
   );
 
-  // Unlimited condition
   const hasUnlimited = isAdmin || unlimitedServer;
 
-  // Determine plan label with explicit priority:
-  // 1) Admin always labeled "Admin"
-  // 2) If unlimited (but not admin), label "Pro"
-  // 3) Else infer from meta/server hints
   const plan: Plan = useMemo(() => {
     if (isAdmin) return "Admin";
     if (hasUnlimited) return "Pro";
@@ -80,10 +104,8 @@ export default function QuotaBadge() {
     return "Free";
   }, [isAdmin, hasUnlimited, user, capServer]);
 
-  // Enforced caps by requirement (only used when NOT unlimited)
   const enforcedCap = hasUnlimited ? Infinity : plan === "Pro" ? 25 : 3;
 
-  // Used display
   const usedDisplay = hasUnlimited
     ? usedServer
     : Math.max(
@@ -103,7 +125,6 @@ export default function QuotaBadge() {
 
   const Icon = plan === "Admin" ? Crown : Sparkles;
 
-  // Optional: don't render until first fetch completes to avoid a Pro flicker
   if (!loaded && !isAdminFromUser(user)) return null;
 
   return (

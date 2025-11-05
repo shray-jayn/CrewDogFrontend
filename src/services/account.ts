@@ -1,4 +1,3 @@
-// src/services/account.ts
 import { API_BASE } from "@/lib/config";
 import { getIdentity } from "@/lib/supabase";
 
@@ -16,7 +15,6 @@ export type RawSummary = {
   renewalDate?: string | null;
   cancelAtPeriodEnd?: boolean;
   price?: { amount: number; currency: string; interval: "month" | "year" };
-  /** backend sometimes sends either of these */
   freeTryUsed?: boolean;
   has_claimed_free_try?: boolean;
 };
@@ -33,13 +31,12 @@ export type NormalizedSummary = {
   price?:
     | { amount: number; currency: string; interval: "month" | "year" }
     | undefined;
-  /** optional: handy for debugging/labels */
   status?: string;
 };
 
 const FREE_CAP = 3;
 const PRO_CAP = 25;
-const num = (v: any, d = NaN) => (Number.isFinite(Number(v)) ? Number(v) : d);
+const num = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : NaN);
 
 export function normalizeSummary(s?: RawSummary): NormalizedSummary {
   const isAdmin = s?.isAdmin === true;
@@ -57,8 +54,7 @@ export function normalizeSummary(s?: RawSummary): NormalizedSummary {
     pro ? PRO_CAP : FREE_CAP,
   ];
   const cap =
-    capCandidates.map((v) => num(v)).find(Number.isFinite) ??
-    (pro ? PRO_CAP : FREE_CAP);
+    capCandidates.map(num).find(Number.isFinite) ?? (pro ? PRO_CAP : FREE_CAP);
 
   let remaining = [
     s?.creditsRemaining,
@@ -66,14 +62,13 @@ export function normalizeSummary(s?: RawSummary): NormalizedSummary {
     s?.searches?.remaining,
     s?.quota?.remaining,
   ]
-    .map((v) => num(v))
+    .map(num)
     .find(Number.isFinite);
 
   let used = [s?.used, s?.searches?.used, s?.quota?.used]
-    .map((v) => num(v))
+    .map(num)
     .find(Number.isFinite);
 
-  // derive the missing side if only one is present
   if (
     !Number.isFinite(used) &&
     Number.isFinite(cap) &&
@@ -89,11 +84,22 @@ export function normalizeSummary(s?: RawSummary): NormalizedSummary {
     remaining = Math.max(0, cap - (used as number));
   }
 
-  // 🔓 Free-plan “first run” override (parity with old site):
-  // if user is NOT pro, NOT unlimited, and backend says freeTryUsed === false,
-  // force the UI to 0/3 so brand-new users never start at 3/3.
   const freeTryUsed = s?.freeTryUsed ?? s?.has_claimed_free_try;
-  if (!unlimited && !pro && freeTryUsed === false) {
+  const serverProvidedAnyCounters =
+    Number.isFinite(num(s?.creditsRemaining)) ||
+    Number.isFinite(num(s?.remainingCredits)) ||
+    Number.isFinite(num(s?.searches?.remaining)) ||
+    Number.isFinite(num(s?.quota?.remaining)) ||
+    Number.isFinite(num(s?.used)) ||
+    Number.isFinite(num(s?.searches?.used)) ||
+    Number.isFinite(num(s?.quota?.used));
+
+  if (
+    !unlimited &&
+    !pro &&
+    freeTryUsed === false &&
+    !serverProvidedAnyCounters
+  ) {
     used = 0;
     remaining = FREE_CAP;
   }
@@ -116,25 +122,42 @@ export function normalizeSummary(s?: RawSummary): NormalizedSummary {
 
 export async function fetchAccountSummary(): Promise<NormalizedSummary> {
   const { userId } = await getIdentity();
-  if (!userId) return normalizeSummary({ status: "none", creditsRemaining: 3 });
 
-  const res = await fetch(
-    `${API_BASE.replace(/\/$/, "")}/account/summary/${userId}`,
-    { credentials: "include" }
-  );
-  if (!res.ok) return normalizeSummary({ status: "none", creditsRemaining: 3 });
-  return normalizeSummary(await res.json());
+  if (!userId) {
+    return normalizeSummary({ status: "none", creditsRemaining: 3 });
+  }
+
+  const base = `${API_BASE.replace(/\/$/, "")}/account/summary/${userId}`;
+  const url = new URL(base);
+  url.searchParams.set("t", String(Date.now()));
+
+  const res = await fetch(url.toString(), {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    return normalizeSummary({ status: "none", creditsRemaining: 3 });
+  }
+
+  const raw = await res.json().catch(() => ({} as RawSummary));
+  return normalizeSummary(raw);
 }
 
-/** =========================
- * NEW: consumeOneCredit
- * ========================= */
 export async function consumeOneCredit(userId?: string) {
-  if (!userId) return;
-  await fetch(`${API_BASE.replace(/\/$/, "")}/account/consume`, {
+  if (!userId) {
+    return { ok: false };
+  }
+
+  const url = `${API_BASE.replace(/\/$/, "")}/account/consume`;
+
+  const res = await fetch(url, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId}),
-  });
+    body: JSON.stringify({ userId }),
+    cache: "no-store",
+  }).catch(() => null as any);
+
+  return { ok: !!res?.ok };
 }
