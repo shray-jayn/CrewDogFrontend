@@ -5,7 +5,8 @@ const Env = z.object({
   VITE_SUPABASE_ANON_KEY: z.string().min(10),
   VITE_SITE_URL: z.string().url().optional(),
   VITE_STRIPE_PUBLISHABLE_KEY: z.string().min(10),
-  VITE_API_BASE: z.string().optional(), 
+  VITE_API_BASE: z.string().optional(),
+  VITE_N8N_SUPPORT_WEBHOOK: z.string().url().optional(),
 });
 
 export const env = Env.parse(import.meta.env);

@@ -5,7 +5,6 @@ export default function ConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Show only if no stored choice
     const saved = readConsent();
     setVisible(!saved);
   }, []);
@@ -15,36 +14,48 @@ export default function ConsentBanner() {
   return (
     <div
       id="gc-consent"
-      className="fixed left-0 right-0 bottom-0 z-[9999] backdrop-blur-md"
-      style={{
-        background: "var(--card, #12161c)",
-        color: "var(--text, #e6eaf2)",
-        borderTop: "1px solid var(--border, #1f2937)",
-      }}
+      className="
+        fixed left-0 right-0 bottom-0 z-[9999] backdrop-blur-md
+        bg-white text-gray-900 border-t border-gray-200
+        dark:bg-[#12161c] dark:text-[#e6eaf2] dark:border-[#1f2937]
+      "
     >
       <div className="mx-auto max-w-5xl flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
         <div className="min-w-[220px]">
           We use Google Analytics only if you consent. You can change this later
           in Privacy.
         </div>
+
         <div className="flex gap-2">
           <button
             onClick={() => {
               grantAll();
               setVisible(false);
             }}
-            className="px-3 py-2 rounded-lg text-white"
-            style={{ background: "#3b82f6", border: "1px solid #3b82f6" }}
+            className="
+              px-3 py-2 rounded-lg text-white
+              bg-blue-600 border border-blue-600
+              hover:bg-blue-700 hover:border-blue-700
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+              dark:ring-offset-[#12161c]
+            "
           >
             Accept
           </button>
+
           <button
             onClick={() => {
               denyAll();
               setVisible(false);
             }}
-            className="px-3 py-2 rounded-lg"
-            style={{ border: "1px solid var(--border, #1f2937)" }}
+            className="
+              px-3 py-2 rounded-lg
+              border border-gray-300 text-gray-800
+              hover:bg-gray-50
+              dark:border-[#1f2937] dark:text-[#e6eaf2] dark:hover:bg-white/5
+              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+              dark:focus:ring-white/30 dark:ring-offset-[#12161c]
+            "
           >
             Reject
           </button>

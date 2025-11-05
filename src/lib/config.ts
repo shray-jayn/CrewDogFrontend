@@ -37,7 +37,7 @@ function ensureHttpsInProd(url: string) {
     if (!isLocalHost && u.hostname !== "localhost" && u.protocol !== "https:") {
       // eslint-disable-next-line no-console
       console.warn(
-        "[config] For production, VITE_API_BASE should use HTTPS:",
+        "[config] For production, a public URL should use HTTPS:",
         url
       );
     }
@@ -73,6 +73,12 @@ export const API_BASE = ensureHttpsInProd(normalizeBase(resolvedApiBase));
 
 // Stripe
 export const STRIPE_PUBLISHABLE_KEY = env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+// ---- NEW: N8N support webhook (JSON endpoint) ----
+const rawSupport =
+  env.VITE_N8N_SUPPORT_WEBHOOK?.trim?.() ||
+  "https://crewdog.app.n8n.cloud/webhook/support";
+export const N8N_SUPPORT_WEBHOOK = ensureHttpsInProd(normalizeBase(rawSupport));
 
 // Prod guardrails: flag obvious misconfig early (console only)
 const IS_PROD_LIKE = isBrowser && !isLocalHost;

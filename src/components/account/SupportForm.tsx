@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { API_BASE } from "@/lib/config";
+import { sendSupportMessage } from "@/services/support";
 
 export default function SupportForm({ userEmail }: { userEmail: string }) {
+  const [topic, setTopic] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
   return (
     <section>
       <div className="flex items-center gap-2 mb-6">
@@ -27,40 +31,37 @@ export default function SupportForm({ userEmail }: { userEmail: string }) {
           className="space-y-6"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (loading) return;
+
             const email = (
               e.currentTarget.querySelector("#supportEmail") as HTMLInputElement
             )?.value?.trim();
+
             const message = (
               e.currentTarget.querySelector(
                 "#supportMessage"
               ) as HTMLTextAreaElement
             )?.value?.trim();
-            const topic = (
-              e.currentTarget.querySelector(
-                "[data-topic]"
-              ) as HTMLInputElement | null
-            )?.value;
 
             if (!email || !message) {
               toast.error("Email and message are required.");
               return;
             }
 
-            const fd = new FormData();
-            fd.set("email", email);
-            fd.set("message", message);
-            if (topic) fd.set("topic", topic);
-
             try {
-              const resp = await fetch(
-                `${API_BASE.replace(/\/$/, "")}/support`,
-                { method: "POST", body: fd }
-              );
-              if (!resp.ok) throw new Error("Request failed");
+              setLoading(true);
+              await sendSupportMessage({
+                email,
+                message,
+                topic: (topic as any) || "other",
+              });
               (e.currentTarget as HTMLFormElement).reset();
+              setTopic("");
               toast.success("Message sent! We'll get back to you soon.");
             } catch (err: any) {
               toast.error(err?.message || "Failed to send. Please try again.");
+            } finally {
+              setLoading(false);
             }
           }}
         >
@@ -74,6 +75,7 @@ export default function SupportForm({ userEmail }: { userEmail: string }) {
               type="email"
               defaultValue={userEmail}
               className="h-12"
+              disabled={loading}
             />
           </div>
 
@@ -82,28 +84,15 @@ export default function SupportForm({ userEmail }: { userEmail: string }) {
               <HelpCircle className="h-4 w-4" />
               Subject
             </Label>
-            <Select>
+            <Select value={topic} onValueChange={setTopic} disabled={loading}>
               <SelectTrigger className="h-12">
                 <SelectValue placeholder="Select a topic" />
               </SelectTrigger>
               <SelectContent>
-                {/* data-topic reads the chosen value for the FormData (not shadcn native) */}
-                <SelectItem value="technical">
-                  <input hidden readOnly value="technical" data-topic />
-                  Technical Issue
-                </SelectItem>
-                <SelectItem value="billing">
-                  <input hidden readOnly value="billing" data-topic />
-                  Billing Question
-                </SelectItem>
-                <SelectItem value="feature">
-                  <input hidden readOnly value="feature" data-topic />
-                  Feature Request
-                </SelectItem>
-                <SelectItem value="other">
-                  <input hidden readOnly value="other" data-topic />
-                  Other
-                </SelectItem>
+                <SelectItem value="technical">Technical Issue</SelectItem>
+                <SelectItem value="billing">Billing Question</SelectItem>
+                <SelectItem value="feature">Feature Request</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -114,12 +103,13 @@ export default function SupportForm({ userEmail }: { userEmail: string }) {
               id="supportMessage"
               placeholder="Describe your issue or question..."
               className="min-h-[200px] resize-none"
+              disabled={loading}
             />
           </div>
 
-          <Button type="submit" size="lg" className="w-full">
+          <Button type="submit" size="lg" className="w-full" disabled={loading}>
             <Mail className="mr-2 h-4 w-4" />
-            Send Message
+            {loading ? "Sending..." : "Send Message"}
           </Button>
         </form>
 

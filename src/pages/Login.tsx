@@ -5,13 +5,13 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Chrome,
-  Plus,
   Mail,
   Lock,
   Eye,
   EyeOff,
   CheckCircle2,
   Sparkles,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,7 +43,6 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic validation
     if (!email || !email.includes("@")) {
       toast.error("Invalid email", {
         description: "Please enter a valid email address",
@@ -91,7 +90,6 @@ export default function Login() {
     try {
       setIsLoading(true);
       await signInWithGoogle(`${window.location.origin}${from}`);
-      // Supabase will redirect; no navigate here
     } catch (err: any) {
       toast.error("Google sign-in failed", {
         description: err?.message ?? "Something went wrong",
@@ -119,13 +117,15 @@ export default function Login() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <motion.div
+              <motion.button
+                onClick={() => navigate("/")}
                 className="w-10 h-10 sm:w-12 sm:h-12 bg-foreground rounded-xl flex items-center justify-center shadow-md"
                 whileHover={{ scale: 1.05, rotate: 5 }}
                 whileTap={{ scale: 0.95 }}
+                aria-label="Go back"
               >
-                <Plus className="w-6 h-6 sm:w-7 sm:h-7 text-background" />
-              </motion.div>
+                <ArrowLeft className="w-6 h-6 sm:w-7 sm:h-7 text-background" />
+              </motion.button>
               <span className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
                 CrewDog
               </span>
@@ -184,6 +184,7 @@ export default function Login() {
               onSubmit={handleSubmit}
               className="space-y-[clamp(0.875rem,1.5vh,1.25rem)]"
             >
+              {/* EMAIL */}
               <motion.div
                 className="relative"
                 initial={{ opacity: 0, x: -20 }}
@@ -197,22 +198,22 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setEmailFocused(true)}
                   onBlur={() => setEmailFocused(false)}
+                  autoComplete="email"
+                  inputMode="email"
                   className="pl-5 pr-12 h-[clamp(2.75rem,6vh,3.5rem)] rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-all duration-300 text-[clamp(0.875rem,1.5vw,1rem)]"
                   disabled={isLoading}
                 />
-                <motion.div
-                  animate={{
-                    scale: emailFocused ? 1.1 : 1,
-                    color: emailFocused
-                      ? "hsl(var(--primary))"
-                      : "hsl(var(--muted-foreground))",
-                  }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Mail className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5" />
-                </motion.div>
+                {/* anchored icon (no scale, no pointer events) */}
+                <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                  <Mail
+                    className={`w-5 h-5 transition-colors ${
+                      emailFocused ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  />
+                </span>
               </motion.div>
 
+              {/* PASSWORD */}
               <motion.div
                 className="relative"
                 initial={{ opacity: 0, x: -20 }}
@@ -226,20 +227,15 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                   className="pl-5 pr-12 h-[clamp(2.75rem,6vh,3.5rem)] rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-all duration-300 text-[clamp(0.875rem,1.5vw,1rem)]"
                   disabled={isLoading}
                 />
-                <motion.button
+                <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  animate={{
-                    color: passwordFocused
-                      ? "hsl(var(--primary))"
-                      : "hsl(var(--muted-foreground))",
-                  }}
+                  className="absolute inset-y-0 right-4 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -248,6 +244,7 @@ export default function Login() {
                       animate={{ opacity: 1, rotate: 0 }}
                       exit={{ opacity: 0, rotate: 180 }}
                       transition={{ duration: 0.3 }}
+                      className={passwordFocused ? "text-primary" : ""}
                     >
                       {showPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -256,9 +253,10 @@ export default function Login() {
                       )}
                     </motion.div>
                   </AnimatePresence>
-                </motion.button>
+                </button>
               </motion.div>
 
+              {/* CONFIRM PASSWORD (Sign Up only) */}
               <AnimatePresence mode="wait">
                 {!isLogin && (
                   <motion.div
@@ -273,14 +271,18 @@ export default function Login() {
                       placeholder="Confirm your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
+                      autoComplete="new-password"
                       className="pl-5 pr-12 h-[clamp(2.75rem,6vh,3.5rem)] rounded-full bg-muted/40 border border-muted hover:border-muted-foreground/20 focus:border-primary transition-all duration-300 text-[clamp(0.875rem,1.5vw,1rem)]"
                       disabled={isLoading}
                     />
-                    <Lock className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                      <Lock className="w-5 h-5 text-muted-foreground" />
+                    </span>
                   </motion.div>
                 )}
               </AnimatePresence>
 
+              {/* Remember + Forgot */}
               <AnimatePresence mode="wait">
                 {isLogin && (
                   <motion.div
@@ -321,6 +323,7 @@ export default function Login() {
                 )}
               </AnimatePresence>
 
+              {/* Submit */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -367,6 +370,7 @@ export default function Login() {
                 </Button>
               </motion.div>
 
+              {/* Divider */}
               <motion.div
                 className="relative my-[clamp(1rem,2vh,1.5rem)]"
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -383,6 +387,7 @@ export default function Login() {
                 </div>
               </motion.div>
 
+              {/* Google */}
               <motion.div
                 className="space-y-[clamp(0.75rem,1.5vh,1rem)]"
                 initial={{ opacity: 0, y: 20 }}
